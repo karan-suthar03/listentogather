@@ -6,7 +6,7 @@ import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'listentogather';
+  title = 'listentogether';
   
   leftWidth = 20;
   centerWidth = 60;
