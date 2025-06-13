@@ -1,7 +1,8 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, SkipBack, Play, SkipForward, Volume2, Send, Users, Hash, Copy, Youtube, PlusCircle, UserX, LogOut } from 'lucide-angular';
+import { HttpClientModule } from '@angular/common/http';
+import { LucideAngularModule, SkipBack, Play, Pause, SkipForward, Volume2, Send, Users, Hash, Copy, Youtube, PlusCircle, UserX, LogOut } from 'lucide-angular';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -9,6 +10,7 @@ import { MusicPlayerComponent } from './music-player/music-player.component';
 import { MusicDetailsComponent } from './music-details/music-details.component';
 import { MainPanelComponent } from './main-panel/main-panel.component';
 import { RoomDetailsComponent } from './room-details/room-details.component';
+import { NotificationsComponent } from './notifications/notifications.component';
 
 @NgModule({
   declarations: [
@@ -16,13 +18,15 @@ import { RoomDetailsComponent } from './room-details/room-details.component';
     MusicPlayerComponent,
     MusicDetailsComponent,
     MainPanelComponent,
-    RoomDetailsComponent
+    RoomDetailsComponent,
+    NotificationsComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    LucideAngularModule.pick({ SkipBack, Play, SkipForward, Volume2, Send, Users, Hash, Copy, Youtube, PlusCircle, UserX, LogOut })
+    HttpClientModule,
+    LucideAngularModule.pick({ SkipBack, Play, Pause, SkipForward, Volume2, Send, Users, Hash, Copy, Youtube, PlusCircle, UserX, LogOut })
   ],
   providers: [],
   bootstrap: [AppComponent]

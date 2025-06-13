@@ -208,6 +208,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 
@@ -265,4 +266,24 @@
 
 .user-list-minimal-v2::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Connection status indicator */
+.connection-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6c757d;
+  display: inline-block;
+  transition: background-color 0.3s ease;
+}
+
+.connection-status.connected {
+  background-color: #28a745;
+  box-shadow: 0 0 6px rgba(40, 167, 69, 0.5);
+}
+
+.badge {
+  font-size: 0.65rem;
+  padding: 0.25em 0.4em;
 }

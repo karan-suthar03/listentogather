@@ -1,24 +1,62 @@
 <div class="room-details-container-minimal p-3">
-  <div class="room-code-card mb-3">
-    <h6 class="room-code-title">Share Room Code</h6>
-    <div class="room-code-display-wrapper">
-      <div class="room-code-text" id="roomCodeMinimalDisplay">{{ roomCode || 'N/A' }}</div>
-      <button class="btn btn-copy-room-code" (click)="copyRoomCode()" title="Copy Room Code">
-        <lucide-icon name="copy" size="18"></lucide-icon>
-        <span>Copy</span>
-      </button>
+  <!-- Initial Join/Create Form -->
+  <div *ngIf="!isInRoom" class="join-create-form">
+    <h5 class="text-center mb-4">ListenTogether</h5>
+    
+    <div class="mb-3">
+      <label for="userName" class="form-label">Your Name</label>
+      <input type="text" class="form-control" id="userName" [(ngModel)]="userName" placeholder="Enter your name" maxlength="50">
     </div>
-    <input type="text" readonly [value]="roomCode" class="visually-hidden" #roomCodeInputForCopy>
+    
+    <div class="row g-2 mb-3">
+      <div class="col">
+        <button class="btn btn-primary w-100" (click)="createRoom()" [disabled]="!userName.trim()">
+          Create Room
+        </button>
+      </div>
+    </div>
+    
+    <hr class="my-3">
+    
+    <div class="mb-3">
+      <label for="joinRoomCode" class="form-label">Room Code</label>
+      <input type="text" class="form-control" id="joinRoomCode" [(ngModel)]="joinRoomCode" placeholder="Enter room code" maxlength="10">
+    </div>
+    
+    <div class="row g-2">
+      <div class="col">
+        <button class="btn btn-outline-primary w-100" (click)="joinRoom()" [disabled]="!userName.trim() || !joinRoomCode.trim()">
+          Join Room
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div class="user-list-section mb-3">
-    <h6 class="section-title d-flex align-items-center mb-2">
-      <lucide-icon name="users" size="18" class="me-2"></lucide-icon>
-      Participants ({{ users.length }})
-    </h6>
-    <ul class="list-group list-group-flush user-list-minimal-v2">
+  <!-- Room Details (shown after joining/creating) -->
+  <div *ngIf="isInRoom">
+    <div class="room-code-card mb-3" *ngIf="roomCode">
+      <h6 class="room-code-title">Share Room Code</h6>
+      <div class="room-code-display-wrapper">
+        <div class="room-code-text" id="roomCodeMinimalDisplay">{{ roomCode || 'N/A' }}</div>
+        <button class="btn btn-copy-room-code" (click)="copyRoomCode()" title="Copy Room Code">
+          <lucide-icon name="copy" size="18"></lucide-icon>
+          <span>Copy</span>
+        </button>
+      </div>
+      <input type="text" readonly [value]="roomCode" class="visually-hidden" #roomCodeInputForCopy>
+    </div>
+
+    <div class="user-list-section mb-3">
+      <h6 class="section-title d-flex align-items-center mb-2">
+        <lucide-icon name="users" size="18" class="me-2"></lucide-icon>
+        Participants ({{ users.length }})
+      </h6>    <ul class="list-group list-group-flush user-list-minimal-v2">
       <li *ngFor="let user of users; trackBy: trackByUserId" class="list-group-item d-flex justify-content-between align-items-center">
-        <span class="user-name">{{ user.name }}</span>
+        <div class="d-flex align-items-center">
+          <span class="connection-status me-2" [class.connected]="true" title="Connected">●</span>
+          <span class="user-name">{{ user.name }}</span>
+          <span *ngIf="user.isHost" class="badge bg-primary ms-2">HOST</span>
+        </div>
         <button *ngIf="isRoomAdmin && user.id !== currentUserId" class="btn btn-icon btn-sm btn-ghost-danger" (click)="kickUser(user.id)" title="Kick {{ user.name }}">
           <lucide-icon name="user-x" size="16"></lucide-icon>
         </button>
@@ -27,24 +65,25 @@
         No other participants yet.
       </li>
     </ul>
-  </div>
+    </div>
 
-  <div class="room-actions-section mb-3" *ngIf="isRoomAdmin">
-    <button class="btn btn-sm btn-danger w-100 d-flex align-items-center justify-content-center" type="button" (click)="endRoom()">
-      <lucide-icon name="log-out" size="16" class="me-2"></lucide-icon>
-      End Room
-    </button>
-  </div>
-
-  <div class="add-music-section mt-auto">
-    <div class="input-group input-group-sm">
-      <span class="input-group-text">
-        <lucide-icon name="youtube" size="16"></lucide-icon>
-      </span>
-      <input type="text" class="form-control form-control-sm" id="youtubeUrlMinimal" placeholder="Paste YouTube URL" [(ngModel)]="youtubeUrl" (keyup.enter)="addVideoToQueue()">
-      <button class="btn btn-sm btn-outline-secondary btn-add-music" type="button" (click)="addVideoToQueue()" [disabled]="!youtubeUrl.trim()" title="Add to Queue">
-        <lucide-icon name="plus-circle" size="16"></lucide-icon>
+    <div class="room-actions-section mb-3" *ngIf="isRoomAdmin">
+      <button class="btn btn-sm btn-danger w-100 d-flex align-items-center justify-content-center" type="button" (click)="endRoom()">
+        <lucide-icon name="log-out" size="16" class="me-2"></lucide-icon>
+        End Room
       </button>
+    </div>
+
+    <div class="add-music-section mt-auto">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">
+          <lucide-icon name="youtube" size="16"></lucide-icon>
+        </span>
+        <input type="text" class="form-control form-control-sm" id="youtubeUrlMinimal" placeholder="Paste YouTube URL" [(ngModel)]="youtubeUrl" (keyup.enter)="addVideoToQueue()">
+        <button class="btn btn-sm btn-outline-secondary btn-add-music" type="button" (click)="addVideoToQueue()" [disabled]="!youtubeUrl.trim()" title="Add to Queue">
+          <lucide-icon name="plus-circle" size="16"></lucide-icon>
+        </button>
+      </div>
     </div>
   </div>
 </div>
