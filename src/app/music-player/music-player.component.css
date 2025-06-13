@@ -1,0 +1,119 @@
+.player-container {
+  background: rgba(13, 13, 13, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  height: 90px;
+  flex-shrink: 0;
+}
+
+.album-art {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.song-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+.artist-name {
+  font-size: 14px;
+  color: #ffffff;
+  opacity: 0.5;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 10px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.control-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.play-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: #000;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.play-btn:hover {
+  background: #ffffff;
+  transform: scale(1.05);
+}
+
+.progress-bar-container {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.1s ease;
+}
+
+.progress-bar-container:hover .progress-bar-fill {
+  background: #ffffff;
+}
+
+.time-text {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  min-width: 35px;
+  text-align: center;
+}
+
+.volume-icon {
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+
+.volume-icon:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.volume-bar {
+  width: 90px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.volume-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 3px;
+  width: 70%;
+}
+
+.volume-bar:hover .volume-fill {
+  background: rgba(255, 255, 255, 0.9);
+}
