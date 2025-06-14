@@ -52,6 +52,13 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     // Start with buttons only - no auto room creation
     this.setupSocketListeners();
     
+    // Subscribe to current user from room state service
+    this.subscriptions.push(
+      this.roomStateService.getCurrentUser().subscribe(user => {
+        this.user = user;
+      })
+    );
+    
     // Subscribe to queue updates from the queue service
     this.subscriptions.push(
       this.queueService.queue$.subscribe(queueData => {
@@ -87,13 +94,11 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       this.users = room.members;
       this.roomStateService.setRoom(room);
       
-      console.log('Room updated, participants:', room.members.length);
     });
     this.subscriptions.push(roomUpdateSub);
 
     // Listen for user joined events
     const userJoinedSub = this.socketService.onUserJoined().subscribe((data) => {
-      console.log('User joined:', data.user.name);
       this.users = data.room.members;
       this.roomStateService.setRoom(data.room);
       
@@ -106,7 +111,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
     // Listen for user left events
     const userLeftSub = this.socketService.onUserLeft().subscribe((data) => {
-      console.log('User left:', data.user.name);
       this.users = data.room.members;
       this.roomStateService.setRoom(data.room);
       
@@ -120,7 +124,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     // Listen for participant list updates
     const participantListSub = this.socketService.onParticipantList().subscribe((participants) => {
       this.users = participants;
-      console.log('Participant list updated:', participants.length, 'users');
     });
     this.subscriptions.push(participantListSub);
   }
@@ -133,21 +136,21 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     
     this.roomService.createRoom(this.userName).subscribe({
       next: (res) => {
-        this.room = res.room;
-        this.user = res.user;
-        this.roomCode = res.room.code;
-        this.users = res.room.members;
-        this.isRoomAdmin = res.user.isHost;
-        this.currentUserId = res.user.id;
+        this.room = res.data.room;
+        this.user = res.data.user;
+        this.roomCode = res.data.room.code;
+        this.users = res.data.room.members;
+        this.isRoomAdmin = res.data.user.isHost;
+        this.currentUserId = res.data.user.id;
         this.isInRoom = true;
         
         // Update shared state
-        this.roomStateService.setRoom(res.room);
-        this.roomStateService.setUser(res.user);
+        this.roomStateService.setRoom(res.data.room);
+        this.roomStateService.setUser(res.data.user);
         this.roomStateService.setInRoom(true);
         
         // Join the room via socket for real-time updates
-        this.socketService.joinRoom(this.roomCode, res.user);
+        this.socketService.joinRoom(this.roomCode, res.data.user);
         
         // Request current participant list
         this.socketService.getParticipants(this.roomCode);
@@ -175,21 +178,21 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     
     this.roomService.joinRoom(this.joinRoomCode, this.userName).subscribe({
       next: (res) => {
-        this.room = res.room;
-        this.user = res.user;
-        this.roomCode = res.room.code;
-        this.users = res.room.members;
-        this.isRoomAdmin = res.user.isHost;
-        this.currentUserId = res.user.id;
+        this.room = res.data.room;
+        this.user = res.data.user;
+        this.roomCode = res.data.room.code;
+        this.users = res.data.room.members;
+        this.isRoomAdmin = res.data.user.isHost;
+        this.currentUserId = res.data.user.id;
         this.isInRoom = true;
         
         // Update shared state
-        this.roomStateService.setRoom(res.room);
-        this.roomStateService.setUser(res.user);
+        this.roomStateService.setRoom(res.data.room);
+        this.roomStateService.setUser(res.data.user);
         this.roomStateService.setInRoom(true);
         
         // Join the room via socket for real-time updates
-        this.socketService.joinRoom(this.roomCode, res.user);
+        this.socketService.joinRoom(this.roomCode, res.data.user);
         
         // Request current participant list
         this.socketService.getParticipants(this.roomCode);
@@ -207,7 +210,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   copyRoomCode(): void {
     navigator.clipboard.writeText(this.roomCode)
       .then(() => {
-        console.log('Room code copied to clipboard!');
       })
       .catch(err => {
         console.error('Failed to copy room code: ', err);
@@ -216,8 +218,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   addVideoToQueue(): void {
     if (this.youtubeUrl.trim() && this.roomCode && !this.isAddingToQueue && !this.isRoomWorking) {
-      console.log('Adding URL to queue:', this.youtubeUrl);
-      
       // Set loading state
       this.isAddingToQueue = true;
       
@@ -260,10 +260,10 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         songData.youtubeUrl = url;
       }
 
-      this.queueService.addToQueue(this.roomCode, songData, this.user?.name || 'Unknown User').subscribe({
+      const addedByName = this.user?.name || this.roomStateService.getUser()?.name || 'Unknown User';
+      
+      this.queueService.addToQueue(this.roomCode, songData, addedByName).subscribe({
         next: (response) => {
-          console.log('Added to queue:', response);
-          
           // Show success message with source info
           let successMessage = 'Added to queue!';
           if (response.source === 'spotify') {
@@ -280,7 +280,8 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
           this.isAddingToQueue = false;
           this.addToQueueSuccess = true;
           
-          // Show notification for playlist additions
+          this.workingStateService.setLocalWorking(false, '');
+          
           if (response.type === 'playlist') {
             this.notificationService.success(successMessage, 5000);
           } else {
@@ -311,13 +312,11 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   }
 
   kickUser(userId: string): void {
-    console.log('Kicking user:', userId);
     this.users = this.users.filter(user => user.id !== userId);
   }
 
   endRoom(): void {
     if (confirm('Are you sure you want to end the room? This action cannot be undone.')) {
-      console.log('Ending room...');
     }
   }
 
@@ -350,23 +349,27 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   removeFromQueue(index: number): void {
     if (this.roomCode && index >= 0 && index < this.queueItems.length) {
+      
       this.queueService.removeFromQueue(this.roomCode, index).subscribe({
         next: (response) => {
-          console.log('Removed from queue:', response);
           this.loadQueue(); // Refresh queue
         },
         error: (error) => {
-          console.error('Error removing from queue:', error);
+          console.error('🗑️ Error removing from queue:', error);
         }
       });
     }
   }
 
   playTrack(index: number): void {
-    if (!this.user || !this.roomCode) return;
+    if (!this.user || !this.roomCode) {
+      return;
+    }
     
     const item = this.queueItems[index];
-    if (!item || item.downloadStatus !== 'completed') return;
+    if (!item || item.downloadStatus !== 'completed') {
+      return;
+    }
     
     this.socketService.playTrackAtIndex(this.roomCode, this.user.id, index);
   }

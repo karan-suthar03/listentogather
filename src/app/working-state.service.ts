@@ -20,9 +20,7 @@ export class WorkingStateService {
 
   constructor(private socketService: SocketService) {
     this.setupSocketListeners();
-  }
-
-  private setupSocketListeners(): void {
+  }  private setupSocketListeners(): void {
     // Listen for room working state changes
     this.socketService.onRoomWorkingStateChanged().subscribe((data) => {
       this.updateWorkingState(data.isWorking, data.workingMessage);

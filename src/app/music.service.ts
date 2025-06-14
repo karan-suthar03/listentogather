@@ -37,19 +37,21 @@ export class MusicService {
         currentTime: this.audioPlayer.currentTime
       });
     });
-  }  // Sync with server state
-  syncWithState(syncData: MusicSyncData): void {
-    const { isPlaying, currentTime, metadata, queue, currentTrackIndex } = syncData;    // Get current track from queue if available
+  }  syncWithState(syncData: MusicSyncData): void {
+    const { isPlaying, currentTime, metadata, queue, currentTrackIndex } = syncData;
+
+    // Get current track from queue if available
     let currentTrack: QueueItem | null = null;
     if (queue && currentTrackIndex !== undefined && currentTrackIndex >= 0 && queue.length > currentTrackIndex) {
       const queueTrack = queue[currentTrackIndex];
+      
       // Convert to QueueItem format
       currentTrack = {
         id: queueTrack.id,
         title: queueTrack.title,
         artist: queueTrack.artist,
         duration: queueTrack.duration,
-        addedBy: queueTrack.addedBy,
+        addedBy: queueTrack.addedBy || 'Unknown User',
         addedAt: queueTrack.addedAt,
         coverUrl: (queueTrack as any).coverUrl || '',
         mp3Url: (queueTrack as any).mp3Url || '',
@@ -76,7 +78,9 @@ export class MusicService {
       
       // Sync play/pause state
       if (isPlaying && this.audioPlayer.paused) {
-        this.audioPlayer.play().catch(console.error);
+        this.audioPlayer.play().catch(error => {
+          console.error('Play error:', error);
+        });
       } else if (!isPlaying && !this.audioPlayer.paused) {
         this.audioPlayer.pause();
       }

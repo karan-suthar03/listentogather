@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { QueueService, QueueItem } from '../queue.service';
+import { MusicService } from '../music.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -10,17 +11,35 @@ import { Subscription } from 'rxjs';
 export class MusicDetailsComponent implements OnInit, OnDestroy {
   currentTrack: QueueItem | null = null;
   private subscriptions: Subscription[] = [];
+  private lastValidTrack: QueueItem | null = null;
 
-  constructor(private queueService: QueueService) { }
+  constructor(
+    private queueService: QueueService,
+    private musicService: MusicService
+  ) { }
 
   ngOnInit(): void {
-    // Subscribe to queue updates to get current track
+    this.subscriptions.push(
+      this.musicService.getCurrentTrack().subscribe(track => {
+        if (track) {
+          this.currentTrack = track;
+          this.lastValidTrack = track;
+        }
+      })
+    );
+
     this.subscriptions.push(
       this.queueService.queue$.subscribe(queueData => {
         if (queueData.currentTrackIndex >= 0 && queueData.queue.length > queueData.currentTrackIndex) {
-          this.currentTrack = queueData.queue[queueData.currentTrackIndex];
-        } else {
+          const newTrack = queueData.queue[queueData.currentTrackIndex];
+          if (!this.currentTrack || this.currentTrack.id !== newTrack.id) {
+            this.currentTrack = newTrack;
+            this.lastValidTrack = newTrack;
+          }
+        } else if (queueData.queue.length === 0) {
           this.currentTrack = null;
+          this.lastValidTrack = null;
+        } else {
         }
       })
     );
