@@ -24,8 +24,12 @@ export class ConfigService {
   get socketUrl(): string {
     return this.apiUrl;
   }
-  
-  getDownloadUrl(path: string): string {
+    getDownloadUrl(path: string): string {
+    // If the path is already a complete URL (Supabase URL), return it as-is
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Otherwise, prepend the API URL for local files
     return `${this.apiUrl}${path}`;
   }
   
