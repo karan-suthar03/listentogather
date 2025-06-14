@@ -1,11 +1,46 @@
 <div class="music-details-container">
-  <div class="music-poster">
-    <img src="https://www.shutterstock.com/shutterstock/photos/1148675771/display_1500/stock-vector-musical-poster-for-your-design-music-elements-design-for-card-invitation-flyer-music-background-1148675771.jpg" alt="Music Poster" class="img-fluid">
+  <!-- Show current track if available -->
+  <div *ngIf="currentTrack" class="current-track">
+    <div class="music-poster">
+      <img [src]="currentTrack.coverUrl || 'https://via.placeholder.com/300x300/e9ecef/6c757d?text=No+Cover'" 
+           [alt]="currentTrack.title" 
+           class="img-fluid"
+           (error)="onImageError($event)">
+    </div>
+    <div class="music-info">
+      <h3>{{ currentTrack.title }}</h3>
+      <h5>{{ currentTrack.artist }}</h5>
+      <div class="text-muted" *ngIf="currentTrack.duration">{{ formatDuration(currentTrack.duration) }}</div>
+      <div class="text-muted">Added by {{ currentTrack.addedBy }}</div>
+      
+      <!-- Download Status -->
+      <div class="download-status mt-2" *ngIf="currentTrack.downloadStatus && currentTrack.downloadStatus !== 'completed'">
+        <span class="badge" [ngClass]="{
+          'bg-warning': currentTrack.downloadStatus === 'pending',
+          'bg-info': currentTrack.downloadStatus === 'downloading',
+          'bg-danger': currentTrack.downloadStatus === 'error'
+        }">
+          <span [ngSwitch]="currentTrack.downloadStatus">
+            <span *ngSwitchCase="'pending'">Preparing...</span>
+            <span *ngSwitchCase="'downloading'">Downloading {{ currentTrack.downloadProgress || 0 }}%</span>
+            <span *ngSwitchCase="'error'">Download failed</span>
+          </span>
+        </span>
+      </div>
+    </div>
   </div>
-  <div class="music-info">
-    <h3>Blinding Lights</h3>
-    <h5>The Weeknd</h5>
-    <div class="text-muted">After Hours</div>
-    <div class="text-muted">2020 • Synthwave, Pop</div>
+
+  <!-- Show placeholder when no track is playing -->
+  <div *ngIf="!currentTrack" class="no-track">
+    <div class="music-poster">
+      <div class="placeholder-cover">
+        <lucide-icon name="music" size="64" color="#6c757d"></lucide-icon>
+      </div>
+    </div>
+    <div class="music-info">
+      <h3 class="text-muted">No Track Playing</h3>
+      <h5 class="text-muted">Add a YouTube video to the queue</h5>
+      <div class="text-muted">Ready to start listening together</div>
+    </div>
   </div>
 </div>

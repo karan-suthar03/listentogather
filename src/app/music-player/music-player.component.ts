@@ -3,7 +3,8 @@ import { Subscription } from 'rxjs';
 import { MusicService } from '../music.service';
 import { SocketService } from '../socket.service';
 import { RoomStateService } from '../room-state.service';
-import { User, MusicMetadata } from '../models/room.model';
+import { QueueService, QueueItem } from '../queue.service';
+import { User } from '../models/room.model';
 
 @Component({
   selector: 'app-music-player',
@@ -16,26 +17,30 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   isHost: boolean = false;
   isInRoom: boolean = false;
 
-  currentMetadata: MusicMetadata | null = null;
+  currentTrack: QueueItem | null = null;
   isPlaying: boolean = false;
   currentTime: number = 0;
   duration: number = 0;
   volume: number = 0.5;
+  isMuted: boolean = false;
+  previousVolume: number = 0.5;
+  
+  // Queue state
+  queue: QueueItem[] = [];
+  currentTrackIndex: number = -1;
   
   private subscriptions: Subscription[] = [];
 
   constructor(
     private musicService: MusicService,
     private socketService: SocketService,
-    private roomStateService: RoomStateService
+    private roomStateService: RoomStateService,
+    private queueService: QueueService
   ) {}
 
   ngOnInit(): void {
     this.setupRoomStateListeners();
     this.setupMusicListeners();
-    
-    // Request initial music metadata
-    this.socketService.getMusicMeta();
   }
 
   private setupRoomStateListeners(): void {
@@ -65,12 +70,20 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   private setupMusicListeners(): void {
-    // Listen to music service state
-    const metadataSub = this.musicService.getCurrentMetadata().subscribe(metadata => {
-      this.currentMetadata = metadata;
-      this.duration = metadata?.duration || 0;
+    // Listen to current track from queue
+    const queueSub = this.queueService.queue$.subscribe(queueData => {
+      this.queue = queueData.queue;
+      this.currentTrackIndex = queueData.currentTrackIndex;
+      
+      if (queueData.currentTrackIndex >= 0 && queueData.queue.length > queueData.currentTrackIndex) {
+        this.currentTrack = queueData.queue[queueData.currentTrackIndex];
+        this.duration = this.currentTrack.duration || 0;
+      } else {
+        this.currentTrack = null;
+        this.duration = 0;
+      }
     });
-    this.subscriptions.push(metadataSub);
+    this.subscriptions.push(queueSub);
 
     const playbackSub = this.musicService.getPlaybackState().subscribe(state => {
       this.isPlaying = state.isPlaying;
@@ -84,12 +97,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(musicStateSub);
 
-    const musicMetaSub = this.socketService.onMusicMeta().subscribe(metadata => {
-      this.currentMetadata = metadata;
-      this.duration = metadata.duration;
-    });
-    this.subscriptions.push(musicMetaSub);
-
     const errorSub = this.socketService.onError().subscribe(error => {
       console.error('Music control error:', error.message);
       alert(error.message);
@@ -97,26 +104,26 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.subscriptions.push(errorSub);
   }
 
-  // Host control methods
+  // Music control methods (available to all participants)
   togglePlay(): void {
-    if (!this.isHost || !this.currentUser || !this.roomCode) {
+    if (!this.currentUser || !this.roomCode) {
       return;
     }
 
     if (this.isPlaying) {
-      this.socketService.hostPause(this.roomCode, this.currentUser.id);
+      this.socketService.pauseMusic(this.roomCode, this.currentUser.id);
     } else {
-      this.socketService.hostPlay(this.roomCode, this.currentUser.id);
+      this.socketService.playMusic(this.roomCode, this.currentUser.id);
     }
   }
 
   onSeek(event: any): void {
-    if (!this.isHost || !this.currentUser || !this.roomCode) {
+    if (!this.currentUser || !this.roomCode) {
       return;
     }
 
     const seekTime = parseFloat(event.target.value);
-    this.socketService.hostSeek(this.roomCode, this.currentUser.id, seekTime);
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
   }
 
   onVolumeChange(event: any): void {
@@ -125,9 +132,99 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.musicService.setVolume(volume);
   }
 
+  onProgressClick(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
+      return;
+    }
+
+    const progressContainer = event.currentTarget as HTMLElement;
+    const rect = progressContainer.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const seekTime = percentage * this.duration;
+    
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
+  }
+
+  onVolumeClick(event: MouseEvent): void {
+    const volumeTrack = event.currentTarget as HTMLElement;
+    const rect = volumeTrack.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    
+    this.volume = percentage;
+    this.isMuted = false;
+    this.musicService.setVolume(percentage);
+  }
+
+  toggleMute(): void {
+    if (this.isMuted) {
+      this.volume = this.previousVolume;
+      this.isMuted = false;
+      this.musicService.setVolume(this.volume);
+    } else {
+      this.previousVolume = this.volume;
+      this.volume = 0;
+      this.isMuted = true;
+      this.musicService.setVolume(0);
+    }
+  }
+
+  // Track navigation methods
+  nextTrack(): void {
+    if (!this.currentUser || !this.roomCode) return;
+    this.socketService.nextTrack(this.roomCode, this.currentUser.id);
+  }
+
+  previousTrack(): void {
+    if (!this.currentUser || !this.roomCode) return;
+    this.socketService.previousTrack(this.roomCode, this.currentUser.id);
+  }
+
+  playTrackAtIndex(index: number): void {
+    if (!this.currentUser || !this.roomCode) return;
+    this.socketService.playTrackAtIndex(this.roomCode, this.currentUser.id, index);
+  }
+
+  // Helper methods for button states
+  isTrackReady(): boolean {
+    return this.currentTrack !== null && 
+           (this.currentTrack.downloadStatus === 'completed' || 
+            !!(this.currentTrack.mp3Url && this.currentTrack.mp3Url.length > 0));
+  }
+
+  hasNextTrack(): boolean {
+    return this.queue.length > 0 && this.currentTrackIndex < this.queue.length - 1;
+  }
+
+  hasPreviousTrack(): boolean {
+    return this.queue.length > 0 && this.currentTrackIndex > 0;
+  }
+
+  getPlayButtonTitle(): string {
+    if (!this.currentUser) return 'Join room to control';
+    if (!this.currentTrack) return 'No track selected';
+    if (!this.isTrackReady()) return 'Track is downloading...';
+    return this.isPlaying ? 'Pause' : 'Play';
+  }
+
+  getVolumeIcon(): string {
+    if (this.isMuted || this.volume === 0) {
+      return 'volume-x';
+    } else if (this.volume < 0.5) {
+      return 'volume-1';
+    } else {
+      return 'volume-2';
+    }
+  }
+
   formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  onImageError(event: any): void {
+    event.target.style.display = 'none';
   }
 }

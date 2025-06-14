@@ -1,68 +1,104 @@
 <div class="player-container position-fixed bottom-0 start-0 end-0" *ngIf="isInRoom">
-  <div class="container-fluid py-2">
-    <div class="row align-items-center">
-
-      <div class="col-md-3 col-sm-4">
-        <div class="d-flex align-items-center">
-          <div class="album-art me-3" 
-               [style.background-image]="(currentMetadata && currentMetadata.coverUrl) ? 'url(http://localhost:3000' + currentMetadata.coverUrl + ')' : 'none'">
+  <div class="container-fluid">
+    <div class="row align-items-center g-0">
+      
+      <!-- Song info section -->
+      <div class="col-lg-3 col-md-4 col-12">
+        <div class="song-info">
+          <div class="album-art" 
+               [style.background-image]="(currentTrack && currentTrack.coverUrl) ? 'url(' + currentTrack.coverUrl + ')' : 'none'"
+               [class.has-cover]="currentTrack && currentTrack.coverUrl">
+            <div class="album-placeholder" *ngIf="!currentTrack || !currentTrack.coverUrl">
+              <lucide-icon name="music" size="20"></lucide-icon>
+            </div>
+            <img *ngIf="currentTrack && currentTrack.coverUrl" 
+                 [src]="currentTrack.coverUrl" 
+                 [alt]="currentTrack.title"
+                 (error)="onImageError($event)"
+                 style="display: none;">
           </div>
-          <div class="text-white">
-            <div class="song-title">{{ currentMetadata?.title || 'No song selected' }}</div>
-            <div class="artist-name">{{ currentMetadata?.artist || 'Unknown artist' }}</div>
+          <div class="track-info">
+            <div class="song-title" [title]="currentTrack?.title">
+              {{ currentTrack?.title || 'No song selected' }}
+            </div>
+            <div class="artist-name" [title]="currentTrack?.artist">
+              {{ currentTrack?.artist || 'Unknown artist' }}
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="col-md-6 col-sm-4">
-        <div class="d-flex flex-column align-items-center">
-          
-          <!-- Host controls message -->
-          <div *ngIf="!isHost && currentUser" class="text-muted small mb-1">
-            Only the host can control playback
-          </div>
+      <!-- Playback controls section -->
+      <div class="col-lg-6 col-md-4 col-12 order-md-2 order-3">
+        <div class="controls-section">
             
-          <div class="d-flex align-items-center gap-3 mb-2">
-            <button class="control-btn" [disabled]="!isHost" title="Previous (Not implemented)">
-              <lucide-icon name="skip-back" size="18" fill="currentColor"></lucide-icon>
+          <!-- Playback buttons -->
+          <div class="playback-controls">
+            <button class="control-btn shuffle-btn" [disabled]="!currentUser" title="Shuffle (Not implemented)">
+              <lucide-icon name="shuffle" size="16"></lucide-icon>
+            </button>
+            <button class="control-btn" 
+                    [disabled]="!currentUser || !hasPreviousTrack()" 
+                    (click)="previousTrack()"
+                    title="Previous track">
+              <lucide-icon name="skip-back" size="18"></lucide-icon>
             </button>
             <button class="play-btn" 
-                    [disabled]="!isHost" 
+                    [disabled]="!currentUser || !currentTrack || !isTrackReady()" 
                     (click)="togglePlay()"
-                    [title]="isHost ? (isPlaying ? 'Pause' : 'Play') : 'Only host can control'">
-              <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="22" fill="currentColor"></lucide-icon>
+                    [class.playing]="isPlaying"
+                    [title]="getPlayButtonTitle()">
+              <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="20"></lucide-icon>
             </button>
-            <button class="control-btn" [disabled]="!isHost" title="Next (Not implemented)">
-              <lucide-icon name="skip-forward" size="18" fill="currentColor"></lucide-icon>
+            <button class="control-btn" 
+                    [disabled]="!currentUser || !hasNextTrack()" 
+                    (click)="nextTrack()"
+                    title="Next track">
+              <lucide-icon name="skip-forward" size="18"></lucide-icon>
+            </button>
+            <button class="control-btn repeat-btn" [disabled]="!currentUser" title="Repeat (Not implemented)">
+              <lucide-icon name="repeat" size="16"></lucide-icon>
             </button>
           </div>
           
-          <div class="d-flex align-items-center w-100" style="max-width: 600px;">
-            <small class="time-text me-3">{{ formatTime(currentTime) }}</small>
-            <div class="progress-bar-container flex-grow-1 mx-3">
-              <input type="range" 
-                     class="form-range progress-slider"
-                     [value]="currentTime"
-                     [max]="duration"
-                     [disabled]="!isHost"
-                     (input)="onSeek($event)"
-                     style="width: 100%;">
+          <!-- Progress bar -->
+          <div class="progress-section">
+            <span class="time-display">{{ formatTime(currentTime) }}</span>
+            <div class="progress-container">
+              <div class="progress-track" 
+                   [class.interactive]="currentUser"
+                   (click)="onProgressClick($event)">
+                <div class="progress-fill" 
+                     [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"></div>
+                <div class="progress-handle" 
+                     [style.left.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
+                     [class.visible]="currentUser"></div>
+              </div>
             </div>
-            <small class="time-text ms-3">{{ formatTime(duration) }}</small>
+            <span class="time-display">{{ formatTime(duration) }}</span>
           </div>
         </div>
       </div>
       
-      <div class="col-md-3 col-sm-4">
-        <div class="d-flex align-items-center justify-content-end">
-          <lucide-icon name="volume-2" size="18" class="volume-icon me-3" fill="currentColor"></lucide-icon>
-          <input type="range" 
-                 class="form-range volume-slider"
-                 [value]="volume * 100"
-                 max="100"
-                 (input)="onVolumeChange($event)"
-                 style="width: 100px;"
-                 title="Personal volume (doesn't affect others)">
+      <!-- Volume and additional controls -->
+      <div class="col-lg-3 col-md-4 col-12 order-md-3 order-2">
+        <div class="volume-section">            <button class="volume-btn" 
+                  (click)="toggleMute()"
+                  [title]="isMuted ? 'Unmute' : 'Mute'">
+            <lucide-icon [name]="getVolumeIcon()" size="18"></lucide-icon>
+          </button>
+          <div class="volume-control">
+            <div class="volume-track" (click)="onVolumeClick($event)">
+              <div class="volume-fill" [style.width.%]="isMuted ? 0 : volume * 100"></div>
+              <div class="volume-handle" 
+                   [style.left.%]="isMuted ? 0 : volume * 100"></div>
+            </div>
+          </div>
+          <div class="additional-controls">
+            <button class="control-btn fullscreen-btn" title="Now playing view (Coming soon)" disabled>
+              <lucide-icon name="maximize" size="16"></lucide-icon>
+            </button>
+          </div>
         </div>
       </div>
     </div>

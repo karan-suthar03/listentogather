@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { WorkingStateService } from '../working-state.service';
+import { Subscription } from 'rxjs';
 
 interface ChatMessage {
   id: number;
@@ -13,7 +15,11 @@ interface ChatMessage {
   templateUrl: './main-panel.component.html',
   styleUrls: ['./main-panel.component.css']
 })
-export class MainPanelComponent {
+export class MainPanelComponent implements OnInit, OnDestroy {
+  isRoomWorking: boolean = false;
+  roomWorkingMessage: string = '';
+  private subscriptions: Subscription[] = [];
+
   messages: ChatMessage[] = [
     {
       id: 1,
@@ -40,6 +46,22 @@ export class MainPanelComponent {
 
   newMessage: string = '';
   currentUser: string = 'You';
+
+  constructor(private workingStateService: WorkingStateService) { }
+
+  ngOnInit(): void {
+    // Subscribe to working state
+    this.subscriptions.push(
+      this.workingStateService.workingState$.subscribe(workingState => {
+        this.isRoomWorking = workingState.isWorking;
+        this.roomWorkingMessage = workingState.workingMessage;
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
 
   sendMessage(): void {
     if (this.newMessage.trim()) {

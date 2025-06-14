@@ -1,34 +1,46 @@
-<div class="minimal-chat-container">
-  <div class="messages-area">
-    <div 
-      *ngFor="let message of messages; trackBy: trackByMessageId" 
-      class="message-item"
-      [class.current-user]="message.isCurrentUser">
-      
-      <div class="message-bubble">
-        <span class="username" *ngIf="!message.isCurrentUser">{{ message.username }}</span>
-        <div class="message-content">
-          {{ message.message }}
-        </div>
-        <small class="timestamp">{{ formatTime(message.timestamp) }}</small>
-      </div>
-    </div>
+<div class="main-panel-container">
+  <div class="panel-tabs">
+    <button 
+      class="tab-button active">
+      <lucide-icon name="send" size="16"></lucide-icon>
+      Chat
+    </button>
   </div>
 
-  <div class="input-area">
-    <input 
-      type="text" 
-      class="chat-input"
-      placeholder="Type..."
-      [(ngModel)]="newMessage"
-      (keypress)="onKeyPress($event)"
-      maxlength="500">
-    <button 
-      class="send-button" 
-      type="button"
-      (click)="sendMessage()"
-      [disabled]="!newMessage.trim()">
-      <lucide-icon name="send" size="18"></lucide-icon>
-    </button>
+  <div class="panel-content">
+    <div class="minimal-chat-container">
+      <div class="messages-area">
+        <div 
+          *ngFor="let message of messages; trackBy: trackByMessageId" 
+          class="message-item"
+          [class.current-user]="message.isCurrentUser">
+          
+          <div class="message-bubble">
+            <span class="username" *ngIf="!message.isCurrentUser">{{ message.username }}</span>
+            <div class="message-content">
+              {{ message.message }}
+            </div>
+            <small class="timestamp">{{ formatTime(message.timestamp) }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <input 
+          type="text" 
+          class="chat-input"
+          placeholder="Type..."
+          [(ngModel)]="newMessage"
+          (keypress)="onKeyPress($event)"
+          maxlength="500">
+        <button 
+          class="send-button" 
+          type="button"
+          (click)="sendMessage()"
+          [disabled]="!newMessage.trim()">
+          <lucide-icon name="send" size="18"></lucide-icon>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
