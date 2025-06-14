@@ -1,3 +1,53 @@
+.main-panel-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(13, 13, 13, 0.95);
+  color: #c0c0c0;
+}
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid #333;
+  background-color: #1a1a1a;
+}
+
+.tab-button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #888;
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+.tab-button.active {
+  color: #1db954;
+  border-bottom-color: #1db954;
+  background-color: #2a2a2a;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.queue-container {
+  height: 100%;
+}
+
 .minimal-chat-container {
   background-color: rgba(13, 13, 13, 0.95); 
   color: #c0c0c0; 
@@ -141,4 +191,73 @@
 
 .messages-area::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Global Working State Banner */
+.working-state-banner {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: pulse-working 2s ease-in-out infinite;
+}
+
+.working-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1976d2;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.working-text {
+  color: #1976d2;
+}
+
+@keyframes pulse-working {
+  0% {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%);
+  }
+  100% {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  }
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.1em;
+}
+
+.spinner-border {
+  display: inline-block;
+  vertical-align: text-bottom;
+  border: 0.125em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+}
+
+@keyframes spinner-border {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

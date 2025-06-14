@@ -1,119 +1,446 @@
 .player-container {
-  background: rgba(13, 13, 13, 0.95);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(28, 28, 28, 0.95) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
   height: 90px;
+  padding: 12px 0;
   flex-shrink: 0;
+  z-index: 1000;
+}
+
+/* Song Info Section */
+.song-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  min-width: 0;
+  height: 66px;
 }
 
 .album-art {
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.1);
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   border-radius: 6px;
   flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.album-art:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.album-art.has-cover {
+  background-color: transparent;
+}
+
+.album-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.track-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .song-title {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   color: #ffffff;
-  opacity: 0.9;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .artist-name {
   font-size: 14px;
-  color: #ffffff;
-  opacity: 0.5;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* Controls Section */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 66px;
+  justify-content: center;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .control-btn {
-  background: none;
+  background: rgba(255, 255, 255, 0.08);
   border: none;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform 0.3s ease;
+}
+
+.control-btn:hover::before {
+  transform: scale(1);
 }
 
 .control-btn:hover {
   color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.control-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.control-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.control-btn:disabled:hover::before {
+  transform: scale(0);
 }
 
 .play-btn {
-  background: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
   border: none;
-  color: #000;
+  color: rgba(0, 0, 0, 0.9);
   border-radius: 50%;
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(29, 185, 84, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.play-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform 0.3s ease;
+}
+
+.play-btn:hover::before {
+  transform: scale(1);
 }
 
 .play-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(29, 185, 84, 0.4);
+}
+
+.play-btn:active {
+  transform: scale(1.02);
+}
+
+.play-btn.playing {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(29, 185, 84, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(29, 185, 84, 0.5); }
+}
+
+.play-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.play-btn:disabled:hover::before {
+  transform: scale(0);
+}
+
+/* Progress Section */
+.progress-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 550px;
+}
+
+.time-display {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  min-width: 40px;
+  text-align: center;
+  font-feature-settings: 'tnum';
+}
+
+.progress-container {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.progress-track.interactive:hover {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1db954 0%, #1ed760 100%);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.progress-track.interactive:hover .progress-fill {
+  background: linear-gradient(90deg, #1ed760 0%, #1db954 100%);
+}
+
+.progress-handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
   background: #ffffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.progress-handle.visible {
+  opacity: 0;
+}
+
+.progress-track.interactive:hover .progress-handle {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Volume Section */
+.volume-section {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 18px;
+  height: 66px;
+}
+
+.volume-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+}
+
+.volume-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
   transform: scale(1.05);
 }
 
-.progress-bar-container {
-  height: 6px;
+.volume-control {
+  width: 80px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.volume-track {
+  width: 100%;
+  height: 4px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border-radius: 2px;
+  position: relative;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.progress-bar-fill {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 3px;
-  width: 0%;
-  transition: width 0.1s ease;
-}
-
-.progress-bar-container:hover .progress-bar-fill {
-  background: #ffffff;
-}
-
-.time-text {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
-  min-width: 35px;
-  text-align: center;
-}
-
-.volume-icon {
-  color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-}
-
-.volume-icon:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.volume-bar {
-  width: 90px;
+.volume-track:hover {
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .volume-fill {
   height: 100%;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 3px;
-  width: 70%;
+  background: linear-gradient(90deg, #1db954 0%, #1ed760 100%);
+  border-radius: 2px;
+  transition: all 0.2s ease;
 }
 
-.volume-bar:hover .volume-fill {
-  background: rgba(255, 255, 255, 0.9);
+.volume-handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.volume-track:hover .volume-handle {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.additional-controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .player-container {
+    padding: 8px 0;
+  }
+  
+  .song-info {
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+  
+  .controls-section {
+    margin-bottom: 8px;
+  }
+  
+  .volume-section {
+    padding: 0 12px;
+    justify-content: center;
+  }
+  
+  .progress-section {
+    max-width: none;
+  }
+  
+  .additional-controls {
+    display: none;
+  }
+  
+  .volume-control {
+    width: 100px;
+  }
+}
+
+@media (max-width: 576px) {
+  .album-art {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .song-title {
+    font-size: 14px;
+  }
+  
+  .artist-name {
+    font-size: 12px;
+  }
+  
+  .playback-controls {
+    gap: 12px;
+  }
+  
+  .control-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .play-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .status-text {
+    display: none;
+  }
 }

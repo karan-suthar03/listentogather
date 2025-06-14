@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { io } from 'socket.io-client';
+import io from 'socket.io-client';
 import { Observable } from 'rxjs';
-import { Room, User, MusicSyncData, MusicMetadata } from './models/room.model';
+import { Room, User, MusicSyncData } from './models/room.model';
 
 @Injectable({
   providedIn: 'root'
@@ -72,16 +72,6 @@ export class SocketService {
       });
     });
   }
-
-  // Listen for music metadata
-  onMusicMeta(): Observable<MusicMetadata> {
-    return new Observable(observer => {
-      this.socket.on('music-meta', (metadata: MusicMetadata) => {
-        observer.next(metadata);
-      });
-    });
-  }
-
   // Listen for errors
   onError(): Observable<{ message: string }> {
     return new Observable(observer => {
@@ -90,8 +80,58 @@ export class SocketService {
       });
     });
   }
+  // Music control methods (for any participant)
+  playMusic(roomCode: string, userId: string): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'play'
+    });
+  }
 
-  // Host control methods
+  pauseMusic(roomCode: string, userId: string): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'pause'
+    });
+  }
+
+  seekMusic(roomCode: string, userId: string, time: number): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'seek',
+      data: { time }
+    });
+  }
+
+  nextTrack(roomCode: string, userId: string): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'next'
+    });
+  }
+
+  previousTrack(roomCode: string, userId: string): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'previous'
+    });
+  }
+
+  playTrackAtIndex(roomCode: string, userId: string, trackIndex: number): void {
+    this.socket.emit('music-control', {
+      roomCode,
+      userId,
+      action: 'playTrack',
+      data: { trackIndex }
+    });
+  }
+
+  // Host control methods (deprecated but kept for compatibility)
   hostPlay(roomCode: string, userId: string): void {
     this.socket.emit('host-control', {
       roomCode,
@@ -116,12 +156,6 @@ export class SocketService {
       data: { time }
     });
   }
-
-  // Request music metadata
-  getMusicMeta(): void {
-    this.socket.emit('get-music-meta');
-  }
-
   // Request sync state
   requestSync(roomCode: string): void {
     this.socket.emit('sync-request', { roomCode });
@@ -135,5 +169,50 @@ export class SocketService {
   // Check if connected
   isConnected(): boolean {
     return this.socket.connected;
+  }
+
+  // Listen for queue item progress updates
+  onQueueItemProgress(): Observable<{ queueItemId: string, progress: number, status: string }> {
+    return new Observable(observer => {
+      this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  // Listen for queue item completion
+  onQueueItemComplete(): Observable<{ queueItemId: string, mp3Url: string, status: string }> {
+    return new Observable(observer => {
+      this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  // Listen for queue item errors
+  onQueueItemError(): Observable<{ queueItemId: string, error: string, status: string }> {
+    return new Observable(observer => {
+      this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  // Listen for queue updates
+  onQueueUpdated(): Observable<{ queue: any[], currentTrackIndex: number }> {
+    return new Observable(observer => {
+      this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  // Listen for room working state changes
+  onRoomWorkingStateChanged(): Observable<{ isWorking: boolean, workingMessage: string }> {
+    return new Observable(observer => {
+      this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {
+        observer.next(data);
+      });
+    });
   }
 }

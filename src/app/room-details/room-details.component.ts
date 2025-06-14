@@ -1,9 +1,12 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Room, User } from '../models/room.model';
+import { QueueItem } from '../queue.service';
 import { RoomService } from '../room.service';
 import { SocketService } from '../socket.service';
 import { RoomStateService } from '../room-state.service';
 import { NotificationService } from '../notification.service';
+import { QueueService } from '../queue.service';
+import { WorkingStateService } from '../working-state.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -19,6 +22,14 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   isRoomAdmin: boolean = false;
   currentUserId: string = '';
   youtubeUrl: string = '';
+  isAddingToQueue: boolean = false;
+  addToQueueSuccess: boolean = false;
+  isRoomWorking: boolean = false;
+  roomWorkingMessage: string = '';
+  
+  // Queue management
+  queueItems: QueueItem[] = [];
+  currentTrackIndex: number = -1;
   
   // New properties for join/create flow
   isInRoom: boolean = false;
@@ -32,12 +43,30 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     private roomService: RoomService, 
     private socketService: SocketService,
     private roomStateService: RoomStateService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private queueService: QueueService,
+    private workingStateService: WorkingStateService
   ) { }
 
   ngOnInit(): void {
     // Start with buttons only - no auto room creation
     this.setupSocketListeners();
+    
+    // Subscribe to queue updates from the queue service
+    this.subscriptions.push(
+      this.queueService.queue$.subscribe(queueData => {
+        this.queueItems = queueData.queue;
+        this.currentTrackIndex = queueData.currentTrackIndex;
+      })
+    );
+
+    // Subscribe to working state
+    this.subscriptions.push(
+      this.workingStateService.workingState$.subscribe(workingState => {
+        this.isRoomWorking = workingState.isWorking;
+        this.roomWorkingMessage = workingState.workingMessage;
+      })
+    );
   }
 
   ngOnDestroy(): void {
@@ -122,6 +151,9 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         
         // Request current participant list
         this.socketService.getParticipants(this.roomCode);
+        
+        // Load queue for the room
+        this.loadQueue();
       },
       error: (err) => {
         console.error('Error creating room:', err);
@@ -161,6 +193,9 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         
         // Request current participant list
         this.socketService.getParticipants(this.roomCode);
+        
+        // Load queue for the room
+        this.loadQueue();
       },
       error: (err) => {
         console.error('Error joining room:', err);
@@ -180,9 +215,98 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   }
 
   addVideoToQueue(): void {
-    if (this.youtubeUrl.trim()) {
-      console.log('Adding video to queue:', this.youtubeUrl);
-      this.youtubeUrl = ''; 
+    if (this.youtubeUrl.trim() && this.roomCode && !this.isAddingToQueue && !this.isRoomWorking) {
+      console.log('Adding URL to queue:', this.youtubeUrl);
+      
+      // Set loading state
+      this.isAddingToQueue = true;
+      
+      // Detect URL type and set appropriate processing message
+      const url = this.youtubeUrl.trim();
+      const isSpotify = this.isSpotifyUrl(url);
+      const isYouTube = this.isYouTubeUrl(url);
+      
+      let processingMessage = 'Processing URL...';
+      if (isSpotify) {
+        // Check if it's a Spotify playlist
+        if (url.includes('/playlist/')) {
+          processingMessage = 'Processing Spotify playlist...';
+        } else {
+          processingMessage = 'Processing Spotify track...';
+        }
+      } else if (isYouTube) {
+        processingMessage = 'Processing YouTube video...';
+      }
+      
+      // Set local working state (will be overridden by server response)
+      this.workingStateService.setLocalWorking(true, processingMessage);
+      
+      // Prepare song data for server
+      const songData: any = {
+        title: 'Loading...',
+        artist: 'Fetching info...',
+        duration: 0,
+        coverUrl: '',
+        mp3Url: ''
+      };
+      
+      // Add URL to appropriate field
+      if (isSpotify) {
+        songData.spotifyUrl = url;
+      } else if (isYouTube) {
+        songData.youtubeUrl = url;
+      } else {
+        // Try as YouTube URL by default
+        songData.youtubeUrl = url;
+      }
+
+      this.queueService.addToQueue(this.roomCode, songData, this.user?.name || 'Unknown User').subscribe({
+        next: (response) => {
+          console.log('Added to queue:', response);
+          
+          // Show success message with source info
+          let successMessage = 'Added to queue!';
+          if (response.source === 'spotify') {
+            if (response.type === 'playlist') {
+              successMessage = `Added ${response.tracksAdded} tracks from Spotify playlist "${response.playlistName}" to queue!`;
+            } else {
+              successMessage = 'Added Spotify track to queue!';
+            }
+          } else if (response.source === 'youtube') {
+            successMessage = 'Added YouTube video to queue!';
+          }
+          
+          this.youtubeUrl = '';
+          this.isAddingToQueue = false;
+          this.addToQueueSuccess = true;
+          
+          // Show notification for playlist additions
+          if (response.type === 'playlist') {
+            this.notificationService.success(successMessage, 5000);
+          } else {
+            // Hide success message after 3 seconds for single tracks
+            setTimeout(() => {
+              this.addToQueueSuccess = false;
+            }, 3000);
+          }
+          
+          // No need to manually refresh - socket will handle updates
+        },
+        error: (error) => {
+          console.error('Error adding to queue:', error);
+          this.isAddingToQueue = false;
+          
+          // Clear working state on error
+          this.workingStateService.setLocalWorking(false, '');
+          
+          let errorMessage = 'Failed to add to queue. Please try again.';
+          if (error.error && error.error.details) {
+            errorMessage = `Failed to add to queue: ${error.error.details}`;
+          }
+          
+          alert(errorMessage);
+        }
+      });
     }
   }
 
@@ -199,5 +323,62 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   trackByUserId(index: number, user: User): string {
     return user.id;
+  }
+
+  trackByQueueId(index: number, item: QueueItem): string {
+    return item.id;
+  }
+
+  formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  loadQueue(): void {
+    if (this.roomCode) {
+      this.queueService.getQueue(this.roomCode).subscribe({
+        next: (queueData) => {
+          this.queueService.updateQueue(queueData);
+        },
+        error: (error) => {
+          console.error('Error loading queue:', error);
+        }
+      });
+    }
+  }
+
+  removeFromQueue(index: number): void {
+    if (this.roomCode && index >= 0 && index < this.queueItems.length) {
+      this.queueService.removeFromQueue(this.roomCode, index).subscribe({
+        next: (response) => {
+          console.log('Removed from queue:', response);
+          this.loadQueue(); // Refresh queue
+        },
+        error: (error) => {
+          console.error('Error removing from queue:', error);
+        }
+      });
+    }
+  }
+
+  playTrack(index: number): void {
+    if (!this.user || !this.roomCode) return;
+    
+    const item = this.queueItems[index];
+    if (!item || item.downloadStatus !== 'completed') return;
+    
+    this.socketService.playTrackAtIndex(this.roomCode, this.user.id, index);
+  }
+
+  // Helper methods for URL detection
+  isYouTubeUrl(url: string): boolean {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
+    return youtubeRegex.test(url);
+  }
+
+  isSpotifyUrl(url: string): boolean {
+    const spotifyRegex = /^(https?:\/\/)?(open\.)?spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+/;
+    return spotifyRegex.test(url);
   }
 }
