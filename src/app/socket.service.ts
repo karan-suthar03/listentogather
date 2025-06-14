@@ -2,16 +2,21 @@ import { Injectable } from '@angular/core';
 import io from 'socket.io-client';
 import { Observable } from 'rxjs';
 import { Room, User, MusicSyncData } from './models/room.model';
+import { ConfigService } from './config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SocketService {
   private socket: any;
-  private readonly url = 'http://localhost:3000';
-
-  constructor() {
-    this.socket = io(this.url);
+  
+  constructor(private configService: ConfigService) {
+    this.socket = io(this.configService.socketUrl, {
+      transports: ['websocket', 'polling'],
+      forceNew: true,
+      reconnection: true,
+      timeout: 5000
+    });
   }
 
   // Join a room
