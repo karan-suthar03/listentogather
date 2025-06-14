@@ -25,7 +25,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   isMuted: boolean = false;
   previousVolume: number = 0.5;
   
-  // Queue state
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
   
@@ -44,7 +43,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   private setupRoomStateListeners(): void {
-    // Listen to room state changes
     const roomSub = this.roomStateService.getCurrentRoom().subscribe(room => {
       this.roomCode = room?.code || '';
       if (this.roomCode) {
@@ -70,7 +68,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   private setupMusicListeners(): void {
-    // Listen to current track from queue
     const queueSub = this.queueService.queue$.subscribe(queueData => {
       this.queue = queueData.queue;
       this.currentTrackIndex = queueData.currentTrackIndex;
@@ -104,7 +101,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.subscriptions.push(errorSub);
   }
 
-  // Music control methods (available to all participants)
   togglePlay(): void {
     if (!this.currentUser || !this.roomCode) {
       return;
@@ -170,7 +166,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Track navigation methods
   nextTrack(): void {
     if (!this.currentUser || !this.roomCode) return;
     this.socketService.nextTrack(this.roomCode, this.currentUser.id);

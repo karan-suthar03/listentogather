@@ -35,19 +35,27 @@ export interface MusicSyncData {
   isPlaying: boolean;
   currentTime: number;
   lastUpdated: number;
-  metadata?: MusicMetadata; // Optional since we only use queue-based music now
+  metadata?: MusicMetadata;
   queue?: QueueItem[];
   currentTrackIndex?: number;
 }
 
 export interface RoomCreationResponse {
-  room: Room;
-  user: User;
+  success: boolean;
+  message: string;
+  data: {
+    room: Room;
+    user: User;
+  };
 }
 
 export interface JoinRoomResponse {
-  room: Room;
-  user: User;
+  success: boolean;
+  message: string;
+  data: {
+    room: Room;
+    user: User;
+  };
 }
 
 export interface QueueItem {

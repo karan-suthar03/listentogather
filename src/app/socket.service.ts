@@ -79,8 +79,7 @@ export class SocketService {
         observer.next(error);
       });
     });
-  }
-  // Music control methods (for any participant)
+  }  // Music control methods (for any participant)
   playMusic(roomCode: string, userId: string): void {
     this.socket.emit('music-control', {
       roomCode,

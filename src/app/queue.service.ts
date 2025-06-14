@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { SocketService } from './socket.service';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 export interface QueueItem {
   id: string;
@@ -124,9 +125,7 @@ export class QueueService {
 
   getQueue(roomCode: string): Observable<QueueData> {
     return this.http.get<QueueData>(`${this.baseUrl}/${roomCode}`);
-  }
-
-  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
+  }  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
     return this.http.post(`${this.baseUrl}/${roomCode}/add`, {
       songData,
       addedBy
@@ -142,11 +141,21 @@ export class QueueService {
       fromIndex,
       toIndex
     });
-  }
-
-  // Update local queue state
-  updateQueue(queueData: QueueData): void {
-    this.queueSubject.next(queueData);
+  }  updateQueue(queueData: QueueData): void {
+    // Validate the queue data before updating
+    if (queueData.queue && Array.isArray(queueData.queue)) {
+      // If currentTrackIndex is invalid but queue has items, try to preserve a valid index
+      if (queueData.currentTrackIndex < 0 && queueData.queue.length > 0) {
+        const currentQueue = this.queueSubject.value;
+        // If we had a valid track before and it still exists, try to maintain it
+        if (currentQueue.currentTrackIndex >= 0 && 
+            currentQueue.currentTrackIndex < queueData.queue.length) {
+          queueData.currentTrackIndex = currentQueue.currentTrackIndex;
+        }
+      }
+      
+      this.queueSubject.next(queueData);
+    }
   }
 
   // Get current queue state

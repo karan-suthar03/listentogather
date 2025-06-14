@@ -69,12 +69,10 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
 
   formatTime(date: Date): string {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-  removeFromQueue(index: number): void {
+  }  removeFromQueue(index: number): void {
     if (this.roomCode) {
       this.queueService.removeFromQueue(this.roomCode, index).subscribe({
         next: (response) => {
-          console.log('Removed from queue:', response);
           this.loadQueue(); // Refresh queue
         },
         error: (error) => {
@@ -85,10 +83,8 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
   }
 
   moveUp(index: number): void {
-    if (index > 0 && this.roomCode) {
-      this.queueService.moveQueueItem(this.roomCode, index, index - 1).subscribe({
+    if (index > 0 && this.roomCode) {      this.queueService.moveQueueItem(this.roomCode, index, index - 1).subscribe({
         next: (response) => {
-          console.log('Moved up in queue:', response);
           this.loadQueue(); // Refresh queue
         },
         error: (error) => {
@@ -102,7 +98,6 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
     if (index < this.queue.length - 1 && this.roomCode) {
       this.queueService.moveQueueItem(this.roomCode, index, index + 1).subscribe({
         next: (response) => {
-          console.log('Moved down in queue:', response);
           this.loadQueue(); // Refresh queue
         },
         error: (error) => {
