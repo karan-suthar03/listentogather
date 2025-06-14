@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { MusicSyncData } from './models/room.model';
 import { QueueItem } from './queue.service';
+import { ConfigService } from './config.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,7 @@ export class MusicService {
   private currentTrack = new BehaviorSubject<QueueItem | null>(null);
   private playbackState = new BehaviorSubject<{ isPlaying: boolean, currentTime: number }>({ isPlaying: false, currentTime: 0 });
   
-  constructor() {
+  constructor(private configService: ConfigService) {
     this.audioPlayer = new Audio();
     this.setupAudioListeners();
   }
@@ -60,11 +61,9 @@ export class MusicService {
         downloadStatus: (queueTrack as any).downloadStatus || 'completed',
         downloadProgress: (queueTrack as any).downloadProgress || 100
       };
-    }
-    
-    // Only handle audio if we have a current track with audio file
+    }      // Only handle audio if we have a current track with audio file
     if (currentTrack && currentTrack.mp3Url) {
-      const fullMp3Url = `http://localhost:3000${currentTrack.mp3Url}`;
+      const fullMp3Url = this.configService.getDownloadUrl(currentTrack.mp3Url);
       if (this.audioPlayer.src !== fullMp3Url) {
         this.audioPlayer.src = fullMp3Url;
         this.currentTrack.next(currentTrack);

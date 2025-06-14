@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { SocketService } from './socket.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ConfigService } from './config.service';
 
 export interface QueueItem {
   id: string;
@@ -32,14 +33,14 @@ export interface QueueData {
   providedIn: 'root'
 })
 export class QueueService {
-  private baseUrl = 'http://localhost:3000/api/queue';
   private queueSubject = new BehaviorSubject<QueueData>({ queue: [], currentTrackIndex: -1 });
   
   public queue$ = this.queueSubject.asObservable();
 
   constructor(
     private http: HttpClient,
-    private socketService: SocketService
+    private socketService: SocketService,
+    private configService: ConfigService
   ) {
     this.setupSocketListeners();
   }  private setupSocketListeners(): void {
@@ -122,26 +123,27 @@ export class QueueService {
       this.queueSubject.next({ ...currentQueue });
     }
   }
-
   getQueue(roomCode: string): Observable<QueueData> {
-    return this.http.get<QueueData>(`${this.baseUrl}/${roomCode}`);
-  }  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/${roomCode}/add`, {
+    return this.http.get<QueueData>(`${this.configService.queueApiUrl}/${roomCode}`);
+  }
+  
+  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
+    return this.http.post(`${this.configService.queueApiUrl}/${roomCode}/add`, {
       songData,
       addedBy
     });
   }
 
   removeFromQueue(roomCode: string, index: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/${roomCode}/${index}`);
+    return this.http.delete(`${this.configService.queueApiUrl}/${roomCode}/${index}`);
   }
 
   moveQueueItem(roomCode: string, fromIndex: number, toIndex: number): Observable<any> {
-    return this.http.put(`${this.baseUrl}/${roomCode}/move`, {
+    return this.http.put(`${this.configService.queueApiUrl}/${roomCode}/move`, {
       fromIndex,
       toIndex
     });
-  }  updateQueue(queueData: QueueData): void {
+  }updateQueue(queueData: QueueData): void {
     // Validate the queue data before updating
     if (queueData.queue && Array.isArray(queueData.queue)) {
       // If currentTrackIndex is invalid but queue has items, try to preserve a valid index
