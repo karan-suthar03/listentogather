@@ -1,0 +1,25 @@
+<div class="app-container">
+  <div class="main-content">
+    <div [style.width.%]="leftWidth" class="resizable-panel left-panel">
+      <app-music-details></app-music-details>
+    </div>
+    <div #leftResizer
+         (mousedown)="startResize($event, 'left')"
+         class="resizer"></div>
+    <div [style.width.%]="centerWidth" class="resizable-panel center-panel">
+      <app-main-panel></app-main-panel>
+    </div>
+    <div #rightResizer
+         (mousedown)="startResize($event, 'right')"
+         class="resizer"></div>
+    <div [style.width.%]="rightWidth" class="resizable-panel right-panel">
+      <app-room-details></app-room-details>
+    </div>
+  </div>
+  <div class="music-player-footer">
+    <app-music-player></app-music-player>
+  </div>
+
+  <!-- Notifications -->
+  <app-notifications></app-notifications>
+</div>

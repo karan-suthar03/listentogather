@@ -1,0 +1,91 @@
+<div class="landing-container">
+  <div class="landing-content">
+    <!-- Header -->
+    <div class="header-section">
+      <div class="logo-section">
+        <lucide-icon class="logo-icon" name="music" size="48"></lucide-icon>
+        <h1 class="app-title">ListenTogether</h1>
+      </div>
+      <p class="app-subtitle">Share music, sync experiences</p>
+    </div>
+
+    <!-- Action Cards -->
+    <div class="action-cards">
+      <!-- Create Room Card -->
+      <div class="action-card create-card">
+        <div class="card-header">
+          <lucide-icon class="card-icon" name="plus-circle" size="32"></lucide-icon>
+          <h2 class="card-title">Create Room</h2>
+        </div>
+        <p class="card-description">
+          Start a new music session and invite friends to listen together
+        </p>
+        <button
+          (click)="createRoom()"
+          [disabled]="isCreatingRoom"
+          class="action-button create-button">
+          <span *ngIf="!isCreatingRoom" class="button-content">
+            <lucide-icon name="plus-circle" size="20"></lucide-icon>
+            Create New Room
+          </span>
+          <span *ngIf="isCreatingRoom" class="button-content loading">
+            <div class="spinner"></div>
+            Creating Room...
+          </span>
+        </button>
+      </div>
+
+      <!-- Join Room Card -->
+      <div class="action-card join-card">
+        <div class="card-header">
+          <lucide-icon class="card-icon" name="users" size="32"></lucide-icon>
+          <h2 class="card-title">Join Room</h2>
+        </div>
+        <p class="card-description">
+          Enter a room code to join an existing music session
+        </p>
+        <div class="join-form">
+          <div class="input-group">
+            <input
+              (input)="onRoomCodeInput($event)"
+              [(ngModel)]="roomCode"
+              [disabled]="isJoiningRoom"
+              class="room-code-input"
+              maxlength="6"
+              placeholder="Enter room code"
+              type="text">
+          </div>
+          <button
+            (click)="joinRoom()"
+            [disabled]="!roomCode.trim() || isJoiningRoom"
+            class="action-button join-button">
+            <span *ngIf="!isJoiningRoom" class="button-content">
+              <lucide-icon name="log-in" size="20"></lucide-icon>
+              Join Room
+            </span>
+            <span *ngIf="isJoiningRoom" class="button-content loading">
+              <div class="spinner"></div>
+              Joining...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="features-section">
+      <div class="feature-item">
+        <lucide-icon name="play" size="20"></lucide-icon>
+        <span>Synchronized playback</span>
+      </div>
+      <div class="feature-item">
+        <lucide-icon name="youtube" size="20"></lucide-icon>
+        <span>YouTube & Spotify support</span>
+      </div>
+      <div class="feature-item">
+        <lucide-icon name="message-circle" size="20"></lucide-icon>
+        <span>Real-time chat</span>
+      </div>
+    </div>
+  </div>
+</div>
