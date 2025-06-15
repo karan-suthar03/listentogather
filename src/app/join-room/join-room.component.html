@@ -1,0 +1,116 @@
+<div class="join-room-container">
+  <div class="join-room-content">
+    <!-- Header Section -->
+    <div class="header-section">
+      <div class="logo-section">
+        <lucide-icon name="music" class="logo-icon" [size]="48"></lucide-icon>
+        <h1 class="app-title">ListenTogether</h1>
+      </div>
+      <p class="app-subtitle">Join the music experience</p>
+    </div>    <!-- Join Card -->
+    <div class="action-card join-card">
+      <div class="card-header">
+        <lucide-icon name="log-in" class="card-icon" [size]="32"></lucide-icon>
+        <h2 class="card-title">Join Room</h2>
+      </div>
+      
+      <!-- Loading State -->
+      <div *ngIf="loadingRoomDetails" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading room details...</p>
+      </div>
+
+      <!-- Room Not Found -->
+      <div *ngIf="roomNotFound && !loadingRoomDetails" class="error-state">
+        <lucide-icon name="alert-circle" class="error-icon" [size]="48"></lucide-icon>
+        <h3>Room Not Found</h3>
+        <p>The room code <span class="room-code-display">{{ roomCode }}</span> doesn't exist or has expired.</p>
+        <button class="back-button" (click)="goToLanding()">
+          <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
+          Back to Home
+        </button>
+      </div>
+
+      <!-- Room Details -->
+      <div *ngIf="roomDetails && !loadingRoomDetails && !roomNotFound" class="room-info">
+        <p class="card-description">
+          You're about to join room <span class="room-code-display">{{ roomCode }}</span>
+        </p>
+        
+        <!-- Room Stats -->
+        <div class="room-stats">
+          <div class="stat-item">
+            <lucide-icon name="users" [size]="20"></lucide-icon>
+            <span>{{ getMemberCount() }} member{{ getMemberCount() !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="stat-item">
+            <lucide-icon name="user" [size]="20"></lucide-icon>
+            <span>Host: {{ getHostName() }}</span>
+          </div>
+        </div>
+
+        <!-- Members List -->
+        <div class="members-section">
+          <div class="members-header">
+            <lucide-icon name="users" [size]="18"></lucide-icon>
+            <span>Current Members</span>
+          </div>
+          <div class="members-list">
+            <div *ngFor="let member of roomDetails.members" class="member-item">
+              <div class="member-avatar">
+                {{ member.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="member-info">
+                <span class="member-name">{{ member.name }}</span>
+                <span class="member-badge" *ngIf="member.isHost">Host</span>
+              </div>
+              <span class="member-time">{{ getTimeAgo(member.joinedAt) }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Join Form -->
+        <div class="join-form">
+          <div class="input-group">
+            <input 
+              type="text" 
+              [(ngModel)]="userName" 
+              placeholder="Enter your name"
+              class="name-input"
+              (keydown.enter)="onJoinRoom()"
+              [disabled]="isJoining"
+              maxlength="20"
+            />
+          </div>
+          
+          <button 
+            class="action-button join-button"
+            [class.loading]="isJoining"
+            (click)="onJoinRoom()"
+            [disabled]="!userName.trim() || isJoining"
+          >
+            <span class="button-content" [class.loading]="isJoining">
+              <span *ngIf="!isJoining">
+                <lucide-icon name="log-in" [size]="18"></lucide-icon>
+                Join Room
+              </span>
+              <span *ngIf="isJoining" class="loading-content">
+                <span class="spinner"></span>
+                Joining...
+              </span>
+            </span>
+          </button>
+          
+          <button 
+            class="back-button"
+            (click)="goToLanding()"
+            [disabled]="isJoining"
+          >
+            <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
+            Back to Home
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

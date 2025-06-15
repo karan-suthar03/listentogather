@@ -35,9 +35,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     document.addEventListener('mousemove', this.onMouseMove.bind(this));
-    document.addEventListener('mouseup', this.onMouseUp.bind(this));
-
-    // Get room code from route
+    document.addEventListener('mouseup', this.onMouseUp.bind(this));    // Get room code from route
     this.route.params.subscribe(params => {
       this.roomCode = params['roomCode'] || '';
 
@@ -45,8 +43,19 @@ export class RoomComponent implements OnInit, OnDestroy {
       this.subscriptions.push(
         this.roomStateService.getCurrentUser().subscribe(user => {
           if (this.roomCode && !user) {
-            // No user state, redirect to landing
-            this.router.navigate(['/']);
+            // Check localStorage for existing user data
+            const savedUserData = this.checkLocalStorageForUser(this.roomCode);            if (savedUserData) {
+              // Restore user session
+              this.roomStateService.setUser(savedUserData.user);
+              if (savedUserData.room) {
+                this.roomStateService.setRoom(savedUserData.room);
+              }
+              this.roomStateService.setInRoom(true);
+              this.ensureSocketConnection();
+            } else {
+              // No user state, redirect to join page
+              this.router.navigate(['/join', this.roomCode]);
+            }
           } else if (user && this.roomCode) {
             // We have both room code and user, ensure socket connection
             this.ensureSocketConnection();
@@ -76,14 +85,35 @@ export class RoomComponent implements OnInit, OnDestroy {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }
-
   @HostListener('window:resize')
   onWindowResize() {
   }
 
-  // Method to return to landing page
   returnToLanding() {
     this.router.navigate(['/']);
+  }
+
+  private checkLocalStorageForUser(roomCode: string): any {
+    try {
+      const savedUserData = localStorage.getItem('listentogether_user');
+      if (savedUserData) {
+        const userData = JSON.parse(savedUserData);
+        const isDataValid = userData && 
+                           userData.roomCode === roomCode && 
+                           userData.timestamp && 
+                           (Date.now() - userData.timestamp) < 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (isDataValid) {
+          return userData;
+        } else {
+          localStorage.removeItem('listentogether_user');
+        }
+      }
+    } catch (error) {
+      console.error('Error reading localStorage:', error);
+      localStorage.removeItem('listentogether_user');
+    }
+    return null;
   }
 
   private ensureSocketConnection(): void {

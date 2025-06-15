@@ -8,6 +8,7 @@ import {
   AlertCircle,
   CheckCircle,
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
   Clock,
   Copy,
@@ -24,10 +25,10 @@ import {
   Play,
   PlusCircle,
   Repeat,
-  Send,
-  Shuffle,
+  Send,  Shuffle,
   SkipBack,
   SkipForward,
+  User,
   Users,
   UserX,
   Volume2,
@@ -44,6 +45,7 @@ import {RoomDetailsComponent} from './room-details/room-details.component';
 import {NotificationsComponent} from './notifications/notifications.component';
 import {RoomComponent} from './room/room.component';
 import {LandingComponent} from './landing/landing.component';
+import {JoinRoomComponent} from './join-room/join-room.component';
 
 @NgModule({
   declarations: [
@@ -54,7 +56,8 @@ import {LandingComponent} from './landing/landing.component';
     RoomDetailsComponent,
     NotificationsComponent,
     RoomComponent,
-    LandingComponent
+    LandingComponent,
+    JoinRoomComponent
   ], imports: [
     BrowserModule,
     CommonModule,
@@ -67,18 +70,18 @@ import {LandingComponent} from './landing/landing.component';
       Play,
       Pause,
       SkipForward,
-      Volume2,
-      Send,
+      Volume2,      Send,
       Users,
+      User,
       Hash,
       Copy,
       Youtube,
       PlusCircle,
       UserX,
-      LogOut,
-      Music,
+      LogOut,      Music,
       ChevronUp,
       ChevronDown,
+      ChevronLeft,
       X,
       Clock,
       Download,
