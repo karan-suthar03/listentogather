@@ -81,11 +81,17 @@
 
     <!-- Bottom Section: Queue -->
     <div class="queue-section">
-      <div class="queue-header mb-3">
-        <h6 class="section-title d-flex align-items-center mb-2">
+      <div class="queue-header mb-3">        <h6 class="section-title d-flex align-items-center mb-2">
           <lucide-icon name="list-music" size="18" class="me-2"></lucide-icon>
-          Queue ({{ queueItems.length }})
-        </h6>        <div class="add-music-section">
+          Queue ({{ queueItems.length }}/10)
+          <span 
+            *ngIf="queueItems.length >= 8" 
+            class="queue-limit-warning ms-2" 
+            [class.queue-full]="queueItems.length >= 10"
+            title="{{ queueItems.length >= 10 ? 'Queue is full!' : 'Queue is almost full' }}">
+            <lucide-icon name="alert-circle" size="14"></lucide-icon>
+          </span>
+        </h6><div class="add-music-section">
           <div class="input-group input-group-sm" [class.working-state]="isRoomWorking">
             <span class="input-group-text" [class.working]="isRoomWorking">
               <lucide-icon *ngIf="!isRoomWorking" name="music" size="16"></lucide-icon>
@@ -99,13 +105,11 @@
                 [placeholder]="isRoomWorking ? 'Server is busy processing...' : 'Paste YouTube or Spotify URL'"
                 [(ngModel)]="youtubeUrl" 
                 (keyup.enter)="addVideoToQueue()"
-                [disabled]="isAddingToQueue || isRoomWorking">
-              <button 
+                [disabled]="isAddingToQueue || isRoomWorking">              <button 
                 class="btn btn-sm btn-outline-secondary btn-add-music" 
                 type="button" 
-                (click)="addVideoToQueue()" 
-                [disabled]="!youtubeUrl.trim() || isAddingToQueue || isRoomWorking" 
-                [title]="isRoomWorking ? 'Server is busy...' : 'Add to Queue'">
+                (click)="addVideoToQueue()"                [disabled]="!youtubeUrl.trim() || isAddingToQueue || isRoomWorking || queueItems.length >= 10" 
+                [title]="queueItems.length >= 10 ? 'Queue is full (10 songs maximum)' : (isRoomWorking ? 'Server is busy...' : 'Add to Queue')">>
               <lucide-icon *ngIf="!isAddingToQueue && !isRoomWorking" name="plus-circle" size="16"></lucide-icon>
               <div *ngIf="isAddingToQueue || isRoomWorking" class="spinner-border spinner-border-sm" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -130,12 +134,18 @@
                 Processing your video... This may take a moment.
               </small>
             </div>
-            
-            <!-- Success Message -->
+              <!-- Success Message -->
             <div *ngIf="addToQueueSuccess" class="success-message">
               <small class="text-success">
                 <lucide-icon name="check-circle" size="12" class="me-1"></lucide-icon>
                 Video added to queue! Download in progress...
+              </small>
+            </div>
+              <!-- Queue Full Warning -->
+            <div *ngIf="queueItems.length >= 10" class="queue-full-warning">
+              <small class="text-warning">
+                <lucide-icon name="alert-circle" size="12" class="me-1"></lucide-icon>
+                Queue is full!
               </small>
             </div>
           </div>

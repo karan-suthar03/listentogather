@@ -644,3 +644,43 @@
 .text-warning {
   color: #856404 !important;
 }
+
+/* Queue limit warning styles */
+.queue-limit-warning {
+  color: #ffc107;
+  display: flex;
+  align-items: center;
+}
+
+.queue-limit-warning.queue-full {
+  color: #dc3545;
+}
+
+.queue-limit-indicator {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+.queue-limit-indicator.full {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.queue-full-warning {
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+.queue-full-warning small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #856404;
+}

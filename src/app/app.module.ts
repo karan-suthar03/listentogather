@@ -11,7 +11,6 @@ import { MusicDetailsComponent } from './music-details/music-details.component';
 import { MainPanelComponent } from './main-panel/main-panel.component';
 import { RoomDetailsComponent } from './room-details/room-details.component';
 import { NotificationsComponent } from './notifications/notifications.component';
-import { MusicQueueComponent } from './music-queue/music-queue.component';
 
 @NgModule({
   declarations: [
@@ -20,8 +19,7 @@ import { MusicQueueComponent } from './music-queue/music-queue.component';
     MusicDetailsComponent,
     MainPanelComponent,
     RoomDetailsComponent,
-    NotificationsComponent,
-    MusicQueueComponent
+    NotificationsComponent
   ],
   imports: [
     BrowserModule,

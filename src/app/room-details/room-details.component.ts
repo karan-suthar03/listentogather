@@ -265,10 +265,13 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       this.queueService.addToQueue(this.roomCode, songData, addedByName).subscribe({
         next: (response) => {
           // Show success message with source info
-          let successMessage = 'Added to queue!';
+          let successMessage = 'Added to queue!';          
           if (response.source === 'spotify') {
             if (response.type === 'playlist') {
               successMessage = `Added ${response.tracksAdded} tracks from Spotify playlist "${response.playlistName}" to queue!`;
+              if (response.tracksSkipped && response.tracksSkipped > 0) {
+                successMessage += ` (${response.tracksSkipped} songs skipped due to queue limit)`;
+              }
             } else {
               successMessage = 'Added Spotify track to queue!';
             }
