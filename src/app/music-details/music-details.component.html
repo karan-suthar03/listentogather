@@ -2,24 +2,25 @@
   <!-- Show current track if available -->
   <div *ngIf="currentTrack" class="current-track">
     <div class="music-poster">
-      <img [src]="currentTrack.coverUrl || 'https://via.placeholder.com/300x300/e9ecef/6c757d?text=No+Cover'" 
-           [alt]="currentTrack.title" 
-           class="img-fluid"
-           (error)="onImageError($event)">
+      <img (error)="onImageError($event)"
+           [alt]="currentTrack.title"
+           [src]="currentTrack.coverUrl || 'https://via.placeholder.com/300x300/e9ecef/6c757d?text=No+Cover'"
+           class="img-fluid">
     </div>
     <div class="music-info">
       <h3>{{ currentTrack.title }}</h3>
       <h5>{{ currentTrack.artist }}</h5>
-      <div class="text-muted" *ngIf="currentTrack.duration">{{ formatDuration(currentTrack.duration) }}</div>
+      <div *ngIf="currentTrack.duration" class="text-muted">{{ formatDuration(currentTrack.duration) }}</div>
       <div class="text-muted">Added by {{ currentTrack.addedBy }}</div>
-      
+
       <!-- Download Status -->
-      <div class="download-status mt-2" *ngIf="currentTrack.downloadStatus && currentTrack.downloadStatus !== 'completed'">
-        <span class="badge" [ngClass]="{
+      <div *ngIf="currentTrack.downloadStatus && currentTrack.downloadStatus !== 'completed'"
+           class="download-status mt-2">
+        <span [ngClass]="{
           'bg-warning': currentTrack.downloadStatus === 'pending',
           'bg-info': currentTrack.downloadStatus === 'downloading',
           'bg-danger': currentTrack.downloadStatus === 'error'
-        }">
+        }" class="badge">
           <span [ngSwitch]="currentTrack.downloadStatus">
             <span *ngSwitchCase="'pending'">Preparing...</span>
             <span *ngSwitchCase="'downloading'">Downloading {{ currentTrack.downloadProgress || 0 }}%</span>
@@ -34,7 +35,7 @@
   <div *ngIf="!currentTrack" class="no-track">
     <div class="music-poster">
       <div class="placeholder-cover">
-        <lucide-icon name="music" size="64" color="#6c757d"></lucide-icon>
+        <lucide-icon color="#6c757d" name="music" size="64"></lucide-icon>
       </div>
     </div>
     <div class="music-info">

@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { SocketService } from './socket.service';
+import {Injectable} from '@angular/core';
+import {BehaviorSubject} from 'rxjs';
+import {SocketService} from './socket.service';
 
 export interface WorkingState {
   isWorking: boolean;
@@ -20,11 +20,6 @@ export class WorkingStateService {
 
   constructor(private socketService: SocketService) {
     this.setupSocketListeners();
-  }  private setupSocketListeners(): void {
-    // Listen for room working state changes
-    this.socketService.onRoomWorkingStateChanged().subscribe((data) => {
-      this.updateWorkingState(data.isWorking, data.workingMessage);
-    });
   }
 
   updateWorkingState(isWorking: boolean, workingMessage: string): void {
@@ -40,5 +35,12 @@ export class WorkingStateService {
 
   setLocalWorking(isWorking: boolean, message: string = ''): void {
     this.updateWorkingState(isWorking, message);
+  }
+
+  private setupSocketListeners(): void {
+    // Listen for room working state changes
+    this.socketService.onRoomWorkingStateChanged().subscribe((data) => {
+      this.updateWorkingState(data.isWorking, data.workingMessage);
+    });
   }
 }

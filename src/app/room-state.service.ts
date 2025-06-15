@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { Room, User } from './models/room.model';
+import {Injectable} from '@angular/core';
+import {BehaviorSubject, Observable} from 'rxjs';
+import {Room, User} from './models/room.model';
 
 @Injectable({
   providedIn: 'root'
@@ -47,6 +47,10 @@ export class RoomStateService {
 
   isHost(): boolean {
     return this.currentUser.value?.isHost || false;
+  }
+
+  getIsInRoomValue(): boolean {
+    return this.isInRoom.value;
   }
 
   // Clear state

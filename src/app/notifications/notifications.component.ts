@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { NotificationService, Notification } from '../notification.service';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Subscription} from 'rxjs';
+import {Notification, NotificationService} from '../notification.service';
 
 @Component({
   selector: 'app-notifications',
@@ -97,7 +97,8 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   notifications: Notification[] = [];
   private subscription?: Subscription;
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService) {
+  }
 
   ngOnInit(): void {
     this.subscription = this.notificationService.getNotifications().subscribe(
@@ -114,9 +115,9 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   formatTime(timestamp: Date): string {
-    return timestamp.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return timestamp.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   }
 

@@ -1,5 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MusicPlayerComponent } from './music-player.component';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {MusicPlayerComponent} from './music-player.component';
+
 describe('MusicPlayerComponent', () => {
   let component: MusicPlayerComponent;
   let fixture: ComponentFixture<MusicPlayerComponent>;

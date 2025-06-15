@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { WorkingStateService } from '../working-state.service';
-import { Subscription } from 'rxjs';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {WorkingStateService} from '../working-state.service';
+import {Subscription} from 'rxjs';
 
 interface ChatMessage {
   id: number;
@@ -18,8 +18,6 @@ interface ChatMessage {
 export class MainPanelComponent implements OnInit, OnDestroy {
   isRoomWorking: boolean = false;
   roomWorkingMessage: string = '';
-  private subscriptions: Subscription[] = [];
-
   messages: ChatMessage[] = [
     {
       id: 1,
@@ -43,11 +41,12 @@ export class MainPanelComponent implements OnInit, OnDestroy {
       isCurrentUser: false
     }
   ];
-
   newMessage: string = '';
   currentUser: string = 'You';
+  private subscriptions: Subscription[] = [];
 
-  constructor(private workingStateService: WorkingStateService) { }
+  constructor(private workingStateService: WorkingStateService) {
+  }
 
   ngOnInit(): void {
     // Subscribe to working state
@@ -72,10 +71,10 @@ export class MainPanelComponent implements OnInit, OnDestroy {
         timestamp: new Date(),
         isCurrentUser: true
       };
-      
+
       this.messages.push(message);
       this.newMessage = '';
-      
+
       setTimeout(() => {
         this.scrollToBottom();
       }, 100);
@@ -89,18 +88,18 @@ export class MainPanelComponent implements OnInit, OnDestroy {
     }
   }
 
+  formatTime(date: Date): string {
+    return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  }
+
+  trackByMessageId(index: number, message: ChatMessage): number {
+    return message.id;
+  }
+
   private scrollToBottom(): void {
     const chatContainer = document.querySelector('.chat-messages');
     if (chatContainer) {
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  }
-
-  formatTime(date: Date): string {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  trackByMessageId(index: number, message: ChatMessage): number {
-    return message.id;
   }
 }

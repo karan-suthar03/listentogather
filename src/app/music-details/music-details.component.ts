@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { QueueService, QueueItem } from '../queue.service';
-import { MusicService } from '../music.service';
-import { Subscription } from 'rxjs';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {QueueItem, QueueService} from '../queue.service';
+import {MusicService} from '../music.service';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'app-music-details',
@@ -16,7 +16,8 @@ export class MusicDetailsComponent implements OnInit, OnDestroy {
   constructor(
     private queueService: QueueService,
     private musicService: MusicService
-  ) { }
+  ) {
+  }
 
   ngOnInit(): void {
     this.subscriptions.push(

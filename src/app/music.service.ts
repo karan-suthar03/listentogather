@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { MusicSyncData } from './models/room.model';
-import { QueueItem } from './queue.service';
-import { ConfigService } from './config.service';
+import {Injectable} from '@angular/core';
+import {BehaviorSubject, Observable} from 'rxjs';
+import {MusicSyncData} from './models/room.model';
+import {QueueItem} from './queue.service';
+import {ConfigService} from './config.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,42 +10,24 @@ import { ConfigService } from './config.service';
 export class MusicService {
   private audioPlayer: HTMLAudioElement;
   private currentTrack = new BehaviorSubject<QueueItem | null>(null);
-  private playbackState = new BehaviorSubject<{ isPlaying: boolean, currentTime: number }>({ isPlaying: false, currentTime: 0 });
-  
+  private playbackState = new BehaviorSubject<{ isPlaying: boolean, currentTime: number }>({
+    isPlaying: false,
+    currentTime: 0
+  });
+
   constructor(private configService: ConfigService) {
     this.audioPlayer = new Audio();
     this.setupAudioListeners();
   }
 
-  private setupAudioListeners(): void {
-    this.audioPlayer.addEventListener('timeupdate', () => {
-      this.playbackState.next({
-        isPlaying: !this.audioPlayer.paused,
-        currentTime: this.audioPlayer.currentTime
-      });
-    });
-
-    this.audioPlayer.addEventListener('play', () => {
-      this.playbackState.next({
-        isPlaying: true,
-        currentTime: this.audioPlayer.currentTime
-      });
-    });
-
-    this.audioPlayer.addEventListener('pause', () => {
-      this.playbackState.next({
-        isPlaying: false,
-        currentTime: this.audioPlayer.currentTime
-      });
-    });
-  }  syncWithState(syncData: MusicSyncData): void {
-    const { isPlaying, currentTime, metadata, queue, currentTrackIndex } = syncData;
+  syncWithState(syncData: MusicSyncData): void {
+    const {isPlaying, currentTime, metadata, queue, currentTrackIndex} = syncData;
 
     // Get current track from queue if available
     let currentTrack: QueueItem | null = null;
     if (queue && currentTrackIndex !== undefined && currentTrackIndex >= 0 && queue.length > currentTrackIndex) {
       const queueTrack = queue[currentTrackIndex];
-      
+
       // Convert to QueueItem format
       currentTrack = {
         id: queueTrack.id,
@@ -68,13 +50,13 @@ export class MusicService {
         this.audioPlayer.src = fullMp3Url;
         this.currentTrack.next(currentTrack);
       }
-      
+
       // Sync playback position (with small tolerance for network lag)
       const timeDiff = Math.abs(this.audioPlayer.currentTime - currentTime);
       if (timeDiff > 1) { // Only sync if difference is more than 1 second
         this.audioPlayer.currentTime = currentTime;
       }
-      
+
       // Sync play/pause state
       if (isPlaying && this.audioPlayer.paused) {
         this.audioPlayer.play().catch(error => {
@@ -91,6 +73,7 @@ export class MusicService {
       this.currentTrack.next(null);
     }
   }
+
   // Get current track
   getCurrentTrack(): Observable<QueueItem | null> {
     return this.currentTrack.asObservable();
@@ -115,11 +98,35 @@ export class MusicService {
   getDuration(): number {
     return this.audioPlayer.duration || 0;
   }
+
   // Cleanup
   destroy(): void {
     this.audioPlayer.pause();
     this.audioPlayer.removeAttribute('src');
     this.currentTrack.complete();
     this.playbackState.complete();
+  }
+
+  private setupAudioListeners(): void {
+    this.audioPlayer.addEventListener('timeupdate', () => {
+      this.playbackState.next({
+        isPlaying: !this.audioPlayer.paused,
+        currentTime: this.audioPlayer.currentTime
+      });
+    });
+
+    this.audioPlayer.addEventListener('play', () => {
+      this.playbackState.next({
+        isPlaying: true,
+        currentTime: this.audioPlayer.currentTime
+      });
+    });
+
+    this.audioPlayer.addEventListener('pause', () => {
+      this.playbackState.next({
+        isPlaying: false,
+        currentTime: this.audioPlayer.currentTime
+      });
+    });
   }
 }

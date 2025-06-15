@@ -1,13 +1,12 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Room, User } from '../models/room.model';
-import { QueueItem } from '../queue.service';
-import { RoomService } from '../room.service';
-import { SocketService } from '../socket.service';
-import { RoomStateService } from '../room-state.service';
-import { NotificationService } from '../notification.service';
-import { QueueService } from '../queue.service';
-import { WorkingStateService } from '../working-state.service';
-import { Subscription } from 'rxjs';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Room, User} from '../models/room.model';
+import {QueueItem, QueueService} from '../queue.service';
+import {RoomService} from '../room.service';
+import {SocketService} from '../socket.service';
+import {RoomStateService} from '../room-state.service';
+import {NotificationService} from '../notification.service';
+import {WorkingStateService} from '../working-state.service';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'app-room-details',
@@ -26,39 +25,47 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   addToQueueSuccess: boolean = false;
   isRoomWorking: boolean = false;
   roomWorkingMessage: string = '';
-  
+
   // Queue management
   queueItems: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  
-  // New properties for join/create flow
-  isInRoom: boolean = false;
-  joinRoomCode: string = '';
-  userName: string = '';
-  
   // Socket subscriptions
   private subscriptions: Subscription[] = [];
 
   constructor(
-    private roomService: RoomService, 
+    private roomService: RoomService,
     private socketService: SocketService,
     private roomStateService: RoomStateService,
     private notificationService: NotificationService,
     private queueService: QueueService,
     private workingStateService: WorkingStateService
-  ) { }
+  ) {
+  }
 
-  ngOnInit(): void {
-    // Start with buttons only - no auto room creation
-    this.setupSocketListeners();
-    
-    // Subscribe to current user from room state service
+  ngOnInit(): void {    // Get current room and user from room state service
     this.subscriptions.push(
-      this.roomStateService.getCurrentUser().subscribe(user => {
-        this.user = user;
+      this.roomStateService.getCurrentRoom().subscribe(room => {
+        if (room) {
+          this.room = room;
+          this.roomCode = room.code;
+          this.users = room.members;
+          this.isRoomAdmin = this.user?.isHost || false;
+          // Load queue when room is set
+          this.loadQueue();
+        }
       })
     );
-    
+    this.subscriptions.push(
+      this.roomStateService.getCurrentUser().subscribe(user => {
+        if (user) {
+          this.user = user;
+          this.currentUserId = user.id;
+          this.isRoomAdmin = user.isHost;
+        }
+      })
+    );    // Start with buttons only - no auto room creation
+    this.setupSocketListeners();
+
     // Subscribe to queue updates from the queue service
     this.subscriptions.push(
       this.queueService.queue$.subscribe(queueData => {
@@ -79,132 +86,12 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    
+
     // Leave room and disconnect socket
     if (this.roomCode) {
       this.socketService.leaveRoom(this.roomCode);
     }
     this.socketService.disconnect();
-  }
-
-  private setupSocketListeners(): void {
-    // Listen for room updates
-    const roomUpdateSub = this.socketService.onRoomUpdate().subscribe((room: Room) => {
-      this.room = room;
-      this.users = room.members;
-      this.roomStateService.setRoom(room);
-      
-    });
-    this.subscriptions.push(roomUpdateSub);
-
-    // Listen for user joined events
-    const userJoinedSub = this.socketService.onUserJoined().subscribe((data) => {
-      this.users = data.room.members;
-      this.roomStateService.setRoom(data.room);
-      
-      // Show notification if it's not the current user
-      if (data.user.id !== this.currentUserId) {
-        this.notificationService.info(`${data.user.name} joined the room`, 2000);
-      }
-    });
-    this.subscriptions.push(userJoinedSub);
-
-    // Listen for user left events
-    const userLeftSub = this.socketService.onUserLeft().subscribe((data) => {
-      this.users = data.room.members;
-      this.roomStateService.setRoom(data.room);
-      
-      // Show notification if it's not the current user
-      if (data.user.id !== this.currentUserId) {
-        this.notificationService.info(`${data.user.name} left the room`, 2000);
-      }
-    });
-    this.subscriptions.push(userLeftSub);
-
-    // Listen for participant list updates
-    const participantListSub = this.socketService.onParticipantList().subscribe((participants) => {
-      this.users = participants;
-    });
-    this.subscriptions.push(participantListSub);
-  }
-
-  createRoom(): void {
-    if (!this.userName.trim()) {
-      alert('Please enter your name');
-      return;
-    }
-    
-    this.roomService.createRoom(this.userName).subscribe({
-      next: (res) => {
-        this.room = res.data.room;
-        this.user = res.data.user;
-        this.roomCode = res.data.room.code;
-        this.users = res.data.room.members;
-        this.isRoomAdmin = res.data.user.isHost;
-        this.currentUserId = res.data.user.id;
-        this.isInRoom = true;
-        
-        // Update shared state
-        this.roomStateService.setRoom(res.data.room);
-        this.roomStateService.setUser(res.data.user);
-        this.roomStateService.setInRoom(true);
-        
-        // Join the room via socket for real-time updates
-        this.socketService.joinRoom(this.roomCode, res.data.user);
-        
-        // Request current participant list
-        this.socketService.getParticipants(this.roomCode);
-        
-        // Load queue for the room
-        this.loadQueue();
-      },
-      error: (err) => {
-        console.error('Error creating room:', err);
-        alert('Failed to create room. Please try again.');
-      }
-    });
-  }
-
-  joinRoom(): void {
-    if (!this.userName.trim()) {
-      alert('Please enter your name');
-      return;
-    }
-    
-    if (!this.joinRoomCode.trim()) {
-      alert('Please enter room code');
-      return;
-    }
-    
-    this.roomService.joinRoom(this.joinRoomCode, this.userName).subscribe({
-      next: (res) => {
-        this.room = res.data.room;
-        this.user = res.data.user;
-        this.roomCode = res.data.room.code;
-        this.users = res.data.room.members;
-        this.isRoomAdmin = res.data.user.isHost;
-        this.currentUserId = res.data.user.id;
-        this.isInRoom = true;
-        
-        // Update shared state
-        this.roomStateService.setRoom(res.data.room);
-        this.roomStateService.setUser(res.data.user);
-        this.roomStateService.setInRoom(true);
-        
-        // Join the room via socket for real-time updates
-        this.socketService.joinRoom(this.roomCode, res.data.user);
-        
-        // Request current participant list
-        this.socketService.getParticipants(this.roomCode);
-        
-        // Load queue for the room
-        this.loadQueue();
-      },
-      error: (err) => {
-        console.error('Error joining room:', err);
-        alert('Failed to join room. Please check the room code and try again.');
-      }
-    });
   }
 
   copyRoomCode(): void {
@@ -220,12 +107,12 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     if (this.youtubeUrl.trim() && this.roomCode && !this.isAddingToQueue && !this.isRoomWorking) {
       // Set loading state
       this.isAddingToQueue = true;
-      
+
       // Detect URL type and set appropriate processing message
       const url = this.youtubeUrl.trim();
       const isSpotify = this.isSpotifyUrl(url);
       const isYouTube = this.isYouTubeUrl(url);
-      
+
       let processingMessage = 'Processing URL...';
       if (isSpotify) {
         // Check if it's a Spotify playlist
@@ -237,10 +124,10 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       } else if (isYouTube) {
         processingMessage = 'Processing YouTube video...';
       }
-      
+
       // Set local working state (will be overridden by server response)
       this.workingStateService.setLocalWorking(true, processingMessage);
-      
+
       // Prepare song data for server
       const songData: any = {
         title: 'Loading...',
@@ -249,7 +136,7 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         coverUrl: '',
         mp3Url: ''
       };
-      
+
       // Add URL to appropriate field
       if (isSpotify) {
         songData.spotifyUrl = url;
@@ -261,11 +148,11 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       }
 
       const addedByName = this.user?.name || this.roomStateService.getUser()?.name || 'Unknown User';
-      
+
       this.queueService.addToQueue(this.roomCode, songData, addedByName).subscribe({
         next: (response) => {
           // Show success message with source info
-          let successMessage = 'Added to queue!';          
+          let successMessage = 'Added to queue!';
           if (response.source === 'spotify') {
             if (response.type === 'playlist') {
               successMessage = `Added ${response.tracksAdded} tracks from Spotify playlist "${response.playlistName}" to queue!`;
@@ -278,13 +165,13 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
           } else if (response.source === 'youtube') {
             successMessage = 'Added YouTube video to queue!';
           }
-          
+
           this.youtubeUrl = '';
           this.isAddingToQueue = false;
           this.addToQueueSuccess = true;
-          
+
           this.workingStateService.setLocalWorking(false, '');
-          
+
           if (response.type === 'playlist') {
             this.notificationService.success(successMessage, 5000);
           } else {
@@ -293,21 +180,21 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
               this.addToQueueSuccess = false;
             }, 3000);
           }
-          
+
           // No need to manually refresh - socket will handle updates
         },
         error: (error) => {
           console.error('Error adding to queue:', error);
           this.isAddingToQueue = false;
-          
+
           // Clear working state on error
           this.workingStateService.setLocalWorking(false, '');
-          
+
           let errorMessage = 'Failed to add to queue. Please try again.';
           if (error.error && error.error.details) {
             errorMessage = `Failed to add to queue: ${error.error.details}`;
           }
-          
+
           alert(errorMessage);
         }
       });
@@ -352,7 +239,7 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   removeFromQueue(index: number): void {
     if (this.roomCode && index >= 0 && index < this.queueItems.length) {
-      
+
       this.queueService.removeFromQueue(this.roomCode, index).subscribe({
         next: (response) => {
           this.loadQueue(); // Refresh queue
@@ -368,12 +255,12 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     if (!this.user || !this.roomCode) {
       return;
     }
-    
+
     const item = this.queueItems[index];
     if (!item || item.downloadStatus !== 'completed') {
       return;
     }
-    
+
     this.socketService.playTrackAtIndex(this.roomCode, this.user.id, index);
   }
 
@@ -386,5 +273,46 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   isSpotifyUrl(url: string): boolean {
     const spotifyRegex = /^(https?:\/\/)?(open\.)?spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+/;
     return spotifyRegex.test(url);
+  }
+
+  private setupSocketListeners(): void {
+    // Listen for room updates
+    const roomUpdateSub = this.socketService.onRoomUpdate().subscribe((room: Room) => {
+      this.room = room;
+      this.users = room.members;
+      this.roomStateService.setRoom(room);
+
+    });
+    this.subscriptions.push(roomUpdateSub);
+
+    // Listen for user joined events
+    const userJoinedSub = this.socketService.onUserJoined().subscribe((data) => {
+      this.users = data.room.members;
+      this.roomStateService.setRoom(data.room);
+
+      // Show notification if it's not the current user
+      if (data.user.id !== this.currentUserId) {
+        this.notificationService.info(`${data.user.name} joined the room`, 2000);
+      }
+    });
+    this.subscriptions.push(userJoinedSub);
+
+    // Listen for user left events
+    const userLeftSub = this.socketService.onUserLeft().subscribe((data) => {
+      this.users = data.room.members;
+      this.roomStateService.setRoom(data.room);
+
+      // Show notification if it's not the current user
+      if (data.user.id !== this.currentUserId) {
+        this.notificationService.info(`${data.user.name} left the room`, 2000);
+      }
+    });
+    this.subscriptions.push(userLeftSub);
+
+    // Listen for participant list updates
+    const participantListSub = this.socketService.onParticipantList().subscribe((participants) => {
+      this.users = participants;
+    });
+    this.subscriptions.push(participantListSub);
   }
 }

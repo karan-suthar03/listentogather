@@ -1,6 +1,6 @@
 <div class="main-panel-container">
   <div class="panel-tabs">
-    <button 
+    <button
       class="tab-button active">
       <lucide-icon name="send" size="16"></lucide-icon>
       Chat
@@ -10,13 +10,13 @@
   <div class="panel-content">
     <div class="minimal-chat-container">
       <div class="messages-area">
-        <div 
-          *ngFor="let message of messages; trackBy: trackByMessageId" 
-          class="message-item"
-          [class.current-user]="message.isCurrentUser">
-          
+        <div
+          *ngFor="let message of messages; trackBy: trackByMessageId"
+          [class.current-user]="message.isCurrentUser"
+          class="message-item">
+
           <div class="message-bubble">
-            <span class="username" *ngIf="!message.isCurrentUser">{{ message.username }}</span>
+            <span *ngIf="!message.isCurrentUser" class="username">{{ message.username }}</span>
             <div class="message-content">
               {{ message.message }}
             </div>
@@ -26,18 +26,18 @@
       </div>
 
       <div class="input-area">
-        <input 
-          type="text" 
-          class="chat-input"
-          placeholder="Type..."
-          [(ngModel)]="newMessage"
+        <input
           (keypress)="onKeyPress($event)"
-          maxlength="500">
-        <button 
-          class="send-button" 
-          type="button"
+          [(ngModel)]="newMessage"
+          class="chat-input"
+          maxlength="500"
+          placeholder="Type..."
+          type="text">
+        <button
           (click)="sendMessage()"
-          [disabled]="!newMessage.trim()">
+          [disabled]="!newMessage.trim()"
+          class="send-button"
+          type="button">
           <lucide-icon name="send" size="18"></lucide-icon>
         </button>
       </div>

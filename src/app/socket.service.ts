@@ -1,15 +1,15 @@
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 import io from 'socket.io-client';
-import { Observable } from 'rxjs';
-import { Room, User, MusicSyncData } from './models/room.model';
-import { ConfigService } from './config.service';
+import {Observable} from 'rxjs';
+import {MusicSyncData, Room, User} from './models/room.model';
+import {ConfigService} from './config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SocketService {
   private socket: any;
-  
+
   constructor(private configService: ConfigService) {
     this.socket = io(this.configService.socketUrl, {
       transports: ['websocket', 'polling'],
@@ -21,12 +21,12 @@ export class SocketService {
 
   // Join a room
   joinRoom(roomCode: string, user: User): void {
-    this.socket.emit('join-room', { roomCode, user });
+    this.socket.emit('join-room', {roomCode, user});
   }
 
   // Leave a room
   leaveRoom(roomCode: string): void {
-    this.socket.emit('leave-room', { roomCode });
+    this.socket.emit('leave-room', {roomCode});
   }
 
   // Listen for room updates
@@ -37,6 +37,7 @@ export class SocketService {
       });
     });
   }
+
   // Listen for user joined events
   onUserJoined(): Observable<{ user: User, room: Room }> {
     return new Observable(observer => {
@@ -66,7 +67,7 @@ export class SocketService {
 
   // Request current participant list
   getParticipants(roomCode: string): void {
-    this.socket.emit('get-participants', { roomCode });
+    this.socket.emit('get-participants', {roomCode});
   }
 
   // Listen for music state updates
@@ -77,6 +78,7 @@ export class SocketService {
       });
     });
   }
+
   // Listen for errors
   onError(): Observable<{ message: string }> {
     return new Observable(observer => {
@@ -106,7 +108,7 @@ export class SocketService {
       roomCode,
       userId,
       action: 'seek',
-      data: { time }
+      data: {time}
     });
   }
 
@@ -131,7 +133,7 @@ export class SocketService {
       roomCode,
       userId,
       action: 'playTrack',
-      data: { trackIndex }
+      data: {trackIndex}
     });
   }
 
@@ -157,12 +159,13 @@ export class SocketService {
       roomCode,
       userId,
       action: 'seek',
-      data: { time }
+      data: {time}
     });
   }
+
   // Request sync state
   requestSync(roomCode: string): void {
-    this.socket.emit('sync-request', { roomCode });
+    this.socket.emit('sync-request', {roomCode});
   }
 
   // Disconnect socket

@@ -1,9 +1,8 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { SocketService } from './socket.service';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ConfigService } from './config.service';
+import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {BehaviorSubject, Observable} from 'rxjs';
+import {SocketService} from './socket.service';
+import {ConfigService} from './config.service';
 
 export interface QueueItem {
   id: string;
@@ -33,8 +32,8 @@ export interface QueueData {
   providedIn: 'root'
 })
 export class QueueService {
-  private queueSubject = new BehaviorSubject<QueueData>({ queue: [], currentTrackIndex: -1 });
-  
+  private queueSubject = new BehaviorSubject<QueueData>({queue: [], currentTrackIndex: -1});
+
   public queue$ = this.queueSubject.asObservable();
 
   constructor(
@@ -43,7 +42,53 @@ export class QueueService {
     private configService: ConfigService
   ) {
     this.setupSocketListeners();
-  }  private setupSocketListeners(): void {
+  }
+
+  getQueue(roomCode: string): Observable<QueueData> {
+    return this.http.get<QueueData>(`${this.configService.queueApiUrl}/${roomCode}`);
+  }
+
+  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
+    return this.http.post(`${this.configService.queueApiUrl}/${roomCode}/add`, {
+      songData,
+      addedBy
+    });
+  }
+
+  removeFromQueue(roomCode: string, index: number): Observable<any> {
+    return this.http.delete(`${this.configService.queueApiUrl}/${roomCode}/${index}`);
+  }
+
+  moveQueueItem(roomCode: string, fromIndex: number, toIndex: number): Observable<any> {
+    return this.http.put(`${this.configService.queueApiUrl}/${roomCode}/move`, {
+      fromIndex,
+      toIndex
+    });
+  }
+
+  updateQueue(queueData: QueueData): void {
+    // Validate the queue data before updating
+    if (queueData.queue && Array.isArray(queueData.queue)) {
+      // If currentTrackIndex is invalid but queue has items, try to preserve a valid index
+      if (queueData.currentTrackIndex < 0 && queueData.queue.length > 0) {
+        const currentQueue = this.queueSubject.value;
+        // If we had a valid track before and it still exists, try to maintain it
+        if (currentQueue.currentTrackIndex >= 0 &&
+          currentQueue.currentTrackIndex < queueData.queue.length) {
+          queueData.currentTrackIndex = currentQueue.currentTrackIndex;
+        }
+      }
+
+      this.queueSubject.next(queueData);
+    }
+  }
+
+  // Get current queue state
+  getCurrentQueue(): QueueData {
+    return this.queueSubject.value;
+  }
+
+  private setupSocketListeners(): void {
     // Listen for queue updates from server
     this.socketService.onQueueUpdated().subscribe((data) => {
       this.updateQueue({
@@ -54,7 +99,8 @@ export class QueueService {
 
     // Listen for music state updates to get current track index
     this.socketService.onMusicState().subscribe((syncData) => {
-      if (syncData.queue && syncData.currentTrackIndex !== undefined) {        this.updateQueue({
+      if (syncData.queue && syncData.currentTrackIndex !== undefined) {
+        this.updateQueue({
           queue: syncData.queue.map(item => ({
             id: item.id,
             title: item.title,
@@ -90,78 +136,39 @@ export class QueueService {
     this.socketService.onQueueItemError().subscribe((data) => {
       this.updateQueueItemError(data.queueItemId, data.error, data.status);
     });
-  }  private updateQueueItemProgress(queueItemId: string, progress: number, status: string): void {
+  }
+
+  private updateQueueItemProgress(queueItemId: string, progress: number, status: string): void {
     const currentQueue = this.queueSubject.value;
     const queueItem = currentQueue.queue.find(item => item.id === queueItemId);
-    
+
     if (queueItem) {
       queueItem.downloadProgress = progress;
       queueItem.downloadStatus = status as any;
-      this.queueSubject.next({ ...currentQueue });
+      this.queueSubject.next({...currentQueue});
     }
   }
 
   private updateQueueItemComplete(queueItemId: string, mp3Url: string, status: string): void {
     const currentQueue = this.queueSubject.value;
     const queueItem = currentQueue.queue.find(item => item.id === queueItemId);
-    
+
     if (queueItem) {
       queueItem.mp3Url = mp3Url;
       queueItem.downloadStatus = status as any;
       queueItem.downloadProgress = 100;
-      this.queueSubject.next({ ...currentQueue });
+      this.queueSubject.next({...currentQueue});
     }
   }
 
   private updateQueueItemError(queueItemId: string, error: string, status: string): void {
     const currentQueue = this.queueSubject.value;
     const queueItem = currentQueue.queue.find(item => item.id === queueItemId);
-    
+
     if (queueItem) {
       queueItem.downloadStatus = status as any;
       queueItem.downloadProgress = 0;
-      this.queueSubject.next({ ...currentQueue });
+      this.queueSubject.next({...currentQueue});
     }
-  }
-  getQueue(roomCode: string): Observable<QueueData> {
-    return this.http.get<QueueData>(`${this.configService.queueApiUrl}/${roomCode}`);
-  }
-  
-  addToQueue(roomCode: string, songData: any, addedBy: string): Observable<any> {
-    return this.http.post(`${this.configService.queueApiUrl}/${roomCode}/add`, {
-      songData,
-      addedBy
-    });
-  }
-
-  removeFromQueue(roomCode: string, index: number): Observable<any> {
-    return this.http.delete(`${this.configService.queueApiUrl}/${roomCode}/${index}`);
-  }
-
-  moveQueueItem(roomCode: string, fromIndex: number, toIndex: number): Observable<any> {
-    return this.http.put(`${this.configService.queueApiUrl}/${roomCode}/move`, {
-      fromIndex,
-      toIndex
-    });
-  }updateQueue(queueData: QueueData): void {
-    // Validate the queue data before updating
-    if (queueData.queue && Array.isArray(queueData.queue)) {
-      // If currentTrackIndex is invalid but queue has items, try to preserve a valid index
-      if (queueData.currentTrackIndex < 0 && queueData.queue.length > 0) {
-        const currentQueue = this.queueSubject.value;
-        // If we had a valid track before and it still exists, try to maintain it
-        if (currentQueue.currentTrackIndex >= 0 && 
-            currentQueue.currentTrackIndex < queueData.queue.length) {
-          queueData.currentTrackIndex = currentQueue.currentTrackIndex;
-        }
-      }
-      
-      this.queueSubject.next(queueData);
-    }
-  }
-
-  // Get current queue state
-  getCurrentQueue(): QueueData {
-    return this.queueSubject.value;
   }
 }

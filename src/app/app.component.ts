@@ -1,90 +1,115 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import {Component, OnInit} from '@angular/core';
+import {ActivatedRoute, NavigationEnd, Router} from '@angular/router';
+import {filter} from 'rxjs/operators';
+import {RoomService} from './room.service';
+import {RoomStateService} from './room-state.service';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent implements OnInit {
   title = 'listentogether';
-  
-  leftWidth = 20;
-  centerWidth = 60;
-  rightWidth = 20;
-  
-  private isResizing = false;
-  private currentResizer: 'left' | 'right' | null = null;
-  private startX = 0;
-  private startLeftWidth = 0;
-  private startCenterWidth = 0;
-  private startRightWidth = 0;
+  showLanding = true; // Show landing page by default
+
+  // Form data
+  createUserName = '';
+  joinUserName = '';
+  joinRoomCode = '';
+
+  constructor(private router: Router, private route: ActivatedRoute, private roomService: RoomService, private roomStateService: RoomStateService) {
+  }
 
   ngOnInit() {
-    document.addEventListener('mousemove', this.onMouseMove.bind(this));
-    document.addEventListener('mouseup', this.onMouseUp.bind(this));
+    // Listen to route changes to determine if we should show landing or room
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event) => {
+      const navigationEnd = event as NavigationEnd;
+      this.showLanding = navigationEnd.url === '/';
+    });
+
+    // Check initial route
+    this.showLanding = this.router.url === '/';
   }
 
-  ngOnDestroy() {
-    document.removeEventListener('mousemove', this.onMouseMove);
-    document.removeEventListener('mouseup', this.onMouseUp);
+  // Landing page methods
+  onCreateRoom(userName: string) {
+    if (!userName.trim()) return;
+
+    this.roomService.createRoom(userName.trim()).subscribe({
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
+          const roomCode = response.data.room.code;
+
+          // Set room state
+          this.roomStateService.setRoom(response.data.room);
+          this.roomStateService.setUser(response.data.user);
+          this.roomStateService.setInRoom(true);
+
+          this.router.navigate(['/room', roomCode]);
+        } else {
+          // TODO: Show error notification
+          alert('Failed to create room. Please try again.');
+        }
+      },
+      error: (err) => {
+        // TODO: Show error notification
+        alert('Failed to create room. Please try again.');
+      }
+    });
   }
 
-  startResize(event: MouseEvent, resizer: 'left' | 'right') {
-    this.isResizing = true;
-    this.currentResizer = resizer;
-    this.startX = event.clientX;
-    this.startLeftWidth = this.leftWidth;
-    this.startCenterWidth = this.centerWidth;
-    this.startRightWidth = this.rightWidth;
-    
-    event.preventDefault();
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+  onJoinRoom(roomCode: string, userName: string) {
+    if (!roomCode.trim() || !userName.trim()) return;
+
+    const cleanRoomCode = roomCode.trim().toUpperCase();
+    const cleanUserName = userName.trim();
+
+    this.roomService.joinRoom(cleanRoomCode, cleanUserName).subscribe({
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
+          // Set room state
+          this.roomStateService.setRoom(response.data.room);
+          this.roomStateService.setUser(response.data.user);
+          this.roomStateService.setInRoom(true);
+
+          // Successfully joined the room
+          this.router.navigate(['/room', cleanRoomCode]);
+        } else {
+          // TODO: Show error notification
+          alert('Failed to join room. Please check the room code and try again.');
+        }
+      },
+      error: (err) => {
+        // TODO: Show error notification
+        if (err.status === 404) {
+          alert('Room not found. Please check the room code.');
+        } else {
+          alert('Failed to join room. Please try again.');
+        }
+      }
+    });
   }
 
-  private onMouseMove(event: MouseEvent) {
-    if (!this.isResizing || !this.currentResizer) return;
-
-    const containerWidth = window.innerWidth;
-    const deltaX = event.clientX - this.startX;
-    const deltaPercent = (deltaX / containerWidth) * 100;
-
-    if (this.currentResizer === 'left') {
-      let newLeftWidth = this.startLeftWidth + deltaPercent;
-      let newCenterWidth = this.startCenterWidth - deltaPercent;
-      
-      newLeftWidth = Math.max(15, Math.min(25, newLeftWidth));
-      newCenterWidth = Math.max(30, Math.min(65, newCenterWidth));
-      
-      const adjustment = (this.startLeftWidth + this.startCenterWidth) - (newLeftWidth + newCenterWidth);
-      newCenterWidth += adjustment;
-      
-      this.leftWidth = newLeftWidth;
-      this.centerWidth = newCenterWidth;
-      
-    } else if (this.currentResizer === 'right') {
-      let newCenterWidth = this.startCenterWidth + deltaPercent;
-      let newRightWidth = this.startRightWidth - deltaPercent;
-      
-      newCenterWidth = Math.max(30, Math.min(65, newCenterWidth));
-      newRightWidth = Math.max(15, Math.min(25, newRightWidth));
-      
-      const adjustment = (this.startCenterWidth + this.startRightWidth) - (newCenterWidth + newRightWidth);
-      newCenterWidth += adjustment;
-      
-      this.centerWidth = newCenterWidth;
-      this.rightWidth = newRightWidth;
+  // Format room code input
+  formatRoomCode(event: any) {
+    let value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (value.length > 6) {
+      value = value.substring(0, 6);
     }
+    this.joinRoomCode = value;
+    event.target.value = value;
   }
 
-  private onMouseUp() {
-    this.isResizing = false;
-    this.currentResizer = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-  }
-
-  @HostListener('window:resize')
-  onWindowResize() {
+  // Generate a random 6-character room code
+  private generateRoomCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   }
 }

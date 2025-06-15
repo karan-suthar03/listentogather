@@ -1,10 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { MusicService } from '../music.service';
-import { SocketService } from '../socket.service';
-import { RoomStateService } from '../room-state.service';
-import { QueueService, QueueItem } from '../queue.service';
-import { User } from '../models/room.model';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Subscription} from 'rxjs';
+import {MusicService} from '../music.service';
+import {SocketService} from '../socket.service';
+import {RoomStateService} from '../room-state.service';
+import {QueueItem, QueueService} from '../queue.service';
+import {User} from '../models/room.model';
 
 @Component({
   selector: 'app-music-player',
@@ -24,10 +24,10 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   volume: number = 0.5;
   isMuted: boolean = false;
   previousVolume: number = 0.5;
-  
+
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  
+
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -35,70 +35,16 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     private socketService: SocketService,
     private roomStateService: RoomStateService,
     private queueService: QueueService
-  ) {}
+  ) {
+  }
 
   ngOnInit(): void {
     this.setupRoomStateListeners();
     this.setupMusicListeners();
   }
 
-  private setupRoomStateListeners(): void {
-    const roomSub = this.roomStateService.getCurrentRoom().subscribe(room => {
-      this.roomCode = room?.code || '';
-      if (this.roomCode) {
-        this.socketService.requestSync(this.roomCode);
-      }
-    });
-    this.subscriptions.push(roomSub);
-
-    const userSub = this.roomStateService.getCurrentUser().subscribe(user => {
-      this.currentUser = user;
-      this.isHost = user?.isHost || false;
-    });
-    this.subscriptions.push(userSub);
-
-    const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
-      this.isInRoom = inRoom;
-    });
-    this.subscriptions.push(inRoomSub);
-  }
-
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
-  }
-
-  private setupMusicListeners(): void {
-    const queueSub = this.queueService.queue$.subscribe(queueData => {
-      this.queue = queueData.queue;
-      this.currentTrackIndex = queueData.currentTrackIndex;
-      
-      if (queueData.currentTrackIndex >= 0 && queueData.queue.length > queueData.currentTrackIndex) {
-        this.currentTrack = queueData.queue[queueData.currentTrackIndex];
-        this.duration = this.currentTrack.duration || 0;
-      } else {
-        this.currentTrack = null;
-        this.duration = 0;
-      }
-    });
-    this.subscriptions.push(queueSub);
-
-    const playbackSub = this.musicService.getPlaybackState().subscribe(state => {
-      this.isPlaying = state.isPlaying;
-      this.currentTime = state.currentTime;
-    });
-    this.subscriptions.push(playbackSub);
-
-    // Listen to socket events
-    const musicStateSub = this.socketService.onMusicState().subscribe(syncData => {
-      this.musicService.syncWithState(syncData);
-    });
-    this.subscriptions.push(musicStateSub);
-
-    const errorSub = this.socketService.onError().subscribe(error => {
-      console.error('Music control error:', error.message);
-      alert(error.message);
-    });
-    this.subscriptions.push(errorSub);
   }
 
   togglePlay(): void {
@@ -138,7 +84,7 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     const clickX = event.clientX - rect.left;
     const percentage = clickX / rect.width;
     const seekTime = percentage * this.duration;
-    
+
     this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
   }
 
@@ -147,7 +93,7 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     const rect = volumeTrack.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-    
+
     this.volume = percentage;
     this.isMuted = false;
     this.musicService.setVolume(percentage);
@@ -183,9 +129,9 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   // Helper methods for button states
   isTrackReady(): boolean {
-    return this.currentTrack !== null && 
-           (this.currentTrack.downloadStatus === 'completed' || 
-            !!(this.currentTrack.mp3Url && this.currentTrack.mp3Url.length > 0));
+    return this.currentTrack !== null &&
+      (this.currentTrack.downloadStatus === 'completed' ||
+        !!(this.currentTrack.mp3Url && this.currentTrack.mp3Url.length > 0));
   }
 
   hasNextTrack(): boolean {
@@ -221,5 +167,60 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   onImageError(event: any): void {
     event.target.style.display = 'none';
+  }
+
+  private setupRoomStateListeners(): void {
+    const roomSub = this.roomStateService.getCurrentRoom().subscribe(room => {
+      this.roomCode = room?.code || '';
+      if (this.roomCode) {
+        this.socketService.requestSync(this.roomCode);
+      }
+    });
+    this.subscriptions.push(roomSub);
+
+    const userSub = this.roomStateService.getCurrentUser().subscribe(user => {
+      this.currentUser = user;
+      this.isHost = user?.isHost || false;
+    });
+    this.subscriptions.push(userSub);
+
+    const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
+      this.isInRoom = inRoom;
+    });
+    this.subscriptions.push(inRoomSub);
+  }
+
+  private setupMusicListeners(): void {
+    const queueSub = this.queueService.queue$.subscribe(queueData => {
+      this.queue = queueData.queue;
+      this.currentTrackIndex = queueData.currentTrackIndex;
+
+      if (queueData.currentTrackIndex >= 0 && queueData.queue.length > queueData.currentTrackIndex) {
+        this.currentTrack = queueData.queue[queueData.currentTrackIndex];
+        this.duration = this.currentTrack.duration || 0;
+      } else {
+        this.currentTrack = null;
+        this.duration = 0;
+      }
+    });
+    this.subscriptions.push(queueSub);
+
+    const playbackSub = this.musicService.getPlaybackState().subscribe(state => {
+      this.isPlaying = state.isPlaying;
+      this.currentTime = state.currentTime;
+    });
+    this.subscriptions.push(playbackSub);
+
+    // Listen to socket events
+    const musicStateSub = this.socketService.onMusicState().subscribe(syncData => {
+      this.musicService.syncWithState(syncData);
+    });
+    this.subscriptions.push(musicStateSub);
+
+    const errorSub = this.socketService.onError().subscribe(error => {
+      console.error('Music control error:', error.message);
+      alert(error.message);
+    });
+    this.subscriptions.push(errorSub);
   }
 }
