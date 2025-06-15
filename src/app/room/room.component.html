@@ -1,5 +1,15 @@
 <div class="app-container">
-  <div class="main-content">
+  <!-- Loading Screen -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <h2 class="loading-title">{{ loadingMessage }}</h2>
+      <p class="loading-subtitle">Please wait...</p>
+    </div>
+  </div>
+
+  <!-- Main Room Content -->
+  <div *ngIf="!isLoading" class="main-content">
     <div [style.width.%]="leftWidth" class="resizable-panel left-panel">
       <app-music-details></app-music-details>
     </div>
@@ -16,7 +26,9 @@
       <app-room-details></app-room-details>
     </div>
   </div>
-  <div class="music-player-footer">
+  
+  <!-- Music Player (only show when not loading) -->
+  <div *ngIf="!isLoading" class="music-player-footer">
     <app-music-player></app-music-player>
   </div>
 
