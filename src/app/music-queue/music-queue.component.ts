@@ -56,8 +56,7 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading queue:', error);
-        }
-      });
+        }      });
     }
   }
 
@@ -69,7 +68,9 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
 
   formatTime(date: Date): string {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }  removeFromQueue(index: number): void {
+  }
+
+  removeFromQueue(index: number): void {
     if (this.roomCode) {
       this.queueService.removeFromQueue(this.roomCode, index).subscribe({
         next: (response) => {
@@ -83,7 +84,8 @@ export class MusicQueueComponent implements OnInit, OnDestroy {
   }
 
   moveUp(index: number): void {
-    if (index > 0 && this.roomCode) {      this.queueService.moveQueueItem(this.roomCode, index, index - 1).subscribe({
+    if (index > 0 && this.roomCode) {      
+      this.queueService.moveQueueItem(this.roomCode, index, index - 1).subscribe({
         next: (response) => {
           this.loadQueue(); // Refresh queue
         },
