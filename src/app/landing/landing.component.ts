@@ -15,13 +15,18 @@ export class LandingComponent {
   isJoiningRoom = false;
   roomCreated = false;
   roomJoined = false;
+  createUserName = '';
+  joinUserName = '';
+  joinRoomCode = '';
+
+  isCreatingRoomLoading = false;
+  isJoiningRoomLoading = false;
 
   constructor(
     private router: Router,
     private roomService: RoomService,
     private roomStateService: RoomStateService,
-    private notificationService: NotificationService
-  ) {
+    private notificationService: NotificationService) {
   }
 
   createRoom() {
@@ -101,6 +106,73 @@ export class LandingComponent {
       value = value.substring(0, 6);
     }
     this.roomCode = value;
+    event.target.value = value;
+  }
+
+  onCreateRoom(userName: string) {
+    if (!userName.trim() || this.isCreatingRoomLoading) return;
+
+    this.isCreatingRoomLoading = true;
+
+    this.roomService.createRoom(userName.trim()).subscribe({
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
+          const roomCode = response.data.room.code;
+
+          this.roomStateService.setRoom(response.data.room);
+          this.roomStateService.setUser(response.data.user);
+          this.roomStateService.setInRoom(true);
+
+          this.router.navigate(['/room', roomCode]);
+        } else {
+          this.isCreatingRoomLoading = false;
+          this.notificationService.show('Failed to create room. Please try again.', 'error');
+        }
+      },
+      error: (err) => {
+        this.isCreatingRoomLoading = false;
+        this.notificationService.show('Failed to create room. Please try again.', 'error');
+      }
+    });
+  }
+
+  onJoinRoom(roomCode: string, userName: string) {
+    if (!roomCode.trim() || !userName.trim() || this.isJoiningRoomLoading) return;
+
+    this.isJoiningRoomLoading = true;
+    const cleanRoomCode = roomCode.trim().toUpperCase();
+    const cleanUserName = userName.trim();
+
+    this.roomService.joinRoom(cleanRoomCode, cleanUserName).subscribe({
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
+          this.roomStateService.setRoom(response.data.room);
+          this.roomStateService.setUser(response.data.user);
+          this.roomStateService.setInRoom(true);
+
+          this.router.navigate(['/room', cleanRoomCode]);
+        } else {
+          this.isJoiningRoomLoading = false;
+          this.notificationService.show('Failed to join room. Please check the room code and try again.', 'error');
+        }
+      },
+      error: (err) => {
+        this.isJoiningRoomLoading = false;
+        if (err.status === 404) {
+          this.notificationService.show('Room not found. Please check the room code.', 'error');
+        } else {
+          this.notificationService.show('Failed to join room. Please try again.', 'error');
+        }
+      }
+    });
+  }
+
+  formatRoomCode(event: any) {
+    let value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (value.length > 6) {
+      value = value.substring(0, 6);
+    }
+    this.joinRoomCode = value;
     event.target.value = value;
   }
 }

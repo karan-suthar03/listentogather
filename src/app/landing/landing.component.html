@@ -19,23 +19,28 @@
         </div>
         <p class="card-description">
           Start a new music session and invite friends to listen together
-        </p>        <button
-          (click)="createRoom()"
-          [disabled]="isCreatingRoom || roomCreated"
-          class="action-button create-button">
-          <span *ngIf="!isCreatingRoom && !roomCreated" class="button-content">
-            <lucide-icon name="plus-circle" size="20"></lucide-icon>
-            Create New Room
-          </span>
-          <span *ngIf="isCreatingRoom" class="button-content loading">
-            <div class="spinner"></div>
-            Creating Room...
-          </span>
-          <span *ngIf="roomCreated && !isCreatingRoom" class="button-content success">
-            <lucide-icon name="check-circle" size="20"></lucide-icon>
-            Room Created!
-          </span>
-        </button>
+        </p>
+        <div class="join-form">
+          <div class="input-group">
+            <input
+              [(ngModel)]="createUserName"
+              class="name-input"
+              maxlength="20"
+              placeholder="Enter your name"
+              type="text">
+          </div>
+          <button
+            (click)="onCreateRoom(createUserName)"
+            [class.loading]="isCreatingRoomLoading"
+            [disabled]="!createUserName || createUserName.trim().length === 0 || isCreatingRoomLoading"
+            class="action-button create-button">
+            <span class="button-content">
+              <div *ngIf="isCreatingRoomLoading" class="spinner"></div>
+              <lucide-icon *ngIf="!isCreatingRoomLoading" name="plus-circle" size="20"></lucide-icon>
+              {{ isCreatingRoomLoading ? 'Creating Room...' : 'Create New Room' }}
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- Join Room Card -->
@@ -48,29 +53,32 @@
           Enter a room code to join an existing music session
         </p>
         <div class="join-form">
-          <div class="input-group">            <input
-              (input)="onRoomCodeInput($event)"
-              [(ngModel)]="roomCode"
-              [disabled]="isJoiningRoom || roomJoined"
+          <div class="input-group">
+            <input
+              [(ngModel)]="joinUserName"
+              class="name-input"
+              maxlength="20"
+              placeholder="Enter your name"
+              type="text">
+          </div>
+          <div class="input-group">
+            <input
+              (input)="formatRoomCode($event)"
+              [(ngModel)]="joinRoomCode"
               class="room-code-input"
               maxlength="6"
               placeholder="Enter room code"
               type="text">
-          </div>          <button
-            (click)="joinRoom()"
-            [disabled]="!roomCode.trim() || isJoiningRoom || roomJoined"
+          </div>
+          <button
+            (click)="onJoinRoom(joinRoomCode, joinUserName)"
+            [class.loading]="isJoiningRoomLoading"
+            [disabled]="!joinRoomCode || joinRoomCode.trim().length === 0 || !joinUserName || joinUserName.trim().length === 0 || isJoiningRoomLoading"
             class="action-button join-button">
-            <span *ngIf="!isJoiningRoom && !roomJoined" class="button-content">
-              <lucide-icon name="log-in" size="20"></lucide-icon>
-              Join Room
-            </span>
-            <span *ngIf="isJoiningRoom" class="button-content loading">
-              <div class="spinner"></div>
-              Joining...
-            </span>
-            <span *ngIf="roomJoined && !isJoiningRoom" class="button-content success">
-              <lucide-icon name="check-circle" size="20"></lucide-icon>
-              Joined Room!
+            <span class="button-content">
+              <div *ngIf="isJoiningRoomLoading" class="spinner"></div>
+              <lucide-icon *ngIf="!isJoiningRoomLoading" name="log-in" size="20"></lucide-icon>
+              {{ isJoiningRoomLoading ? 'Joining Room...' : 'Join Room' }}
             </span>
           </button>
         </div>

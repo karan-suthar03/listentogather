@@ -162,7 +162,8 @@
                     </span>
                     <!-- Progress Bar -->
                     <div *ngIf="item.downloadStatus === 'downloading'" class="progress mt-1" style="height: 3px;">
-                      <div [attr.aria-valuenow]="item.downloadProgress || 0" [style.width.%]="item.downloadProgress || 0"
+                      <div [attr.aria-valuenow]="item.downloadProgress || 0"
+                           [style.width.%]="item.downloadProgress || 0"
                            aria-valuemax="100"
                            aria-valuemin="0"
                            class="progress-bar" role="progressbar">

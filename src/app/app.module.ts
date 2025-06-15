@@ -45,13 +45,14 @@ import {NotificationsComponent} from './notifications/notifications.component';
 import {RoomComponent} from './room/room.component';
 import {LandingComponent} from './landing/landing.component';
 
-@NgModule({  declarations: [
+@NgModule({
+  declarations: [
     AppComponent,
     MusicPlayerComponent,
     MusicDetailsComponent,
     MainPanelComponent,
     RoomDetailsComponent,
-    NotificationsComponent, 
+    NotificationsComponent,
     RoomComponent,
     LandingComponent
   ], imports: [
