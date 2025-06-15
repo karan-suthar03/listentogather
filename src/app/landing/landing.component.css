@@ -168,11 +168,27 @@
   transform: none;
 }
 
+.action-button:disabled.create-button {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.5) 0%, rgba(30, 215, 96, 0.5) 100%);
+}
+
+.action-button:disabled.join-button {
+  background: linear-gradient(135deg, rgba(13, 202, 240, 0.5) 0%, rgba(11, 181, 214, 0.5) 100%);
+}
+
 .button-content {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+.button-content.success {
+  color: #1db954;
+}
+
+.button-content.loading {
+  opacity: 0.9;
 }
 
 /* Join Form */
@@ -297,8 +313,24 @@
     flex-direction: column;
     gap: 0.5rem;
   }
-
   .card-title {
     font-size: 1.5rem;
   }
+}
+
+/* Button States */
+.button-content.success {
+  color: #1db954;
+}
+
+.button-content.loading {
+  opacity: 0.9;
+}
+
+.action-button:disabled.create-button {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.5) 0%, rgba(30, 215, 96, 0.5) 100%);
+}
+
+.action-button:disabled.join-button {
+  background: linear-gradient(135deg, rgba(13, 202, 240, 0.5) 0%, rgba(11, 181, 214, 0.5) 100%);
 }

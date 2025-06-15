@@ -43,15 +43,17 @@ import {MainPanelComponent} from './main-panel/main-panel.component';
 import {RoomDetailsComponent} from './room-details/room-details.component';
 import {NotificationsComponent} from './notifications/notifications.component';
 import {RoomComponent} from './room/room.component';
+import {LandingComponent} from './landing/landing.component';
 
-@NgModule({
-  declarations: [
+@NgModule({  declarations: [
     AppComponent,
     MusicPlayerComponent,
     MusicDetailsComponent,
     MainPanelComponent,
     RoomDetailsComponent,
-    NotificationsComponent, RoomComponent
+    NotificationsComponent, 
+    RoomComponent,
+    LandingComponent
   ], imports: [
     BrowserModule,
     CommonModule,

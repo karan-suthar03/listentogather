@@ -19,18 +19,21 @@
         </div>
         <p class="card-description">
           Start a new music session and invite friends to listen together
-        </p>
-        <button
+        </p>        <button
           (click)="createRoom()"
-          [disabled]="isCreatingRoom"
+          [disabled]="isCreatingRoom || roomCreated"
           class="action-button create-button">
-          <span *ngIf="!isCreatingRoom" class="button-content">
+          <span *ngIf="!isCreatingRoom && !roomCreated" class="button-content">
             <lucide-icon name="plus-circle" size="20"></lucide-icon>
             Create New Room
           </span>
           <span *ngIf="isCreatingRoom" class="button-content loading">
             <div class="spinner"></div>
             Creating Room...
+          </span>
+          <span *ngIf="roomCreated && !isCreatingRoom" class="button-content success">
+            <lucide-icon name="check-circle" size="20"></lucide-icon>
+            Room Created!
           </span>
         </button>
       </div>
@@ -45,27 +48,29 @@
           Enter a room code to join an existing music session
         </p>
         <div class="join-form">
-          <div class="input-group">
-            <input
+          <div class="input-group">            <input
               (input)="onRoomCodeInput($event)"
               [(ngModel)]="roomCode"
-              [disabled]="isJoiningRoom"
+              [disabled]="isJoiningRoom || roomJoined"
               class="room-code-input"
               maxlength="6"
               placeholder="Enter room code"
               type="text">
-          </div>
-          <button
+          </div>          <button
             (click)="joinRoom()"
-            [disabled]="!roomCode.trim() || isJoiningRoom"
+            [disabled]="!roomCode.trim() || isJoiningRoom || roomJoined"
             class="action-button join-button">
-            <span *ngIf="!isJoiningRoom" class="button-content">
+            <span *ngIf="!isJoiningRoom && !roomJoined" class="button-content">
               <lucide-icon name="log-in" size="20"></lucide-icon>
               Join Room
             </span>
             <span *ngIf="isJoiningRoom" class="button-content loading">
               <div class="spinner"></div>
               Joining...
+            </span>
+            <span *ngIf="roomJoined && !isJoiningRoom" class="button-content success">
+              <lucide-icon name="check-circle" size="20"></lucide-icon>
+              Joined Room!
             </span>
           </button>
         </div>
