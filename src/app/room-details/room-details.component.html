@@ -1,7 +1,5 @@
 <div class="room-details-container-minimal p-3">
-  <!-- Room Details -->
   <div class="room-content">
-    <!-- Top Section: Room Details -->
     <div class="room-details-section">
       <div *ngIf="roomCode" class="room-code-card mb-3">
         <h6 class="room-code-title">Share Room Code</h6>
@@ -22,11 +20,15 @@
         </h6>
         <ul class="list-group list-group-flush user-list-minimal-v2">
           <li *ngFor="let user of users; trackBy: trackByUserId"
-              class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <span [class.connected]="true" class="connection-status me-2" title="Connected">●</span>
-              <span class="user-name">{{ user.name }}</span>
+              class="list-group-item d-flex justify-content-between align-items-center">            <div class="d-flex align-items-center">
+              <span 
+                [class.connected]="user.isConnected !== false" 
+                [class.disconnected]="user.isConnected === false"
+                class="connection-status me-2" 
+                [title]="user.isConnected === false ? 'Disconnected (removing soon)' : 'Connected'">●</span>
+              <span class="user-name" [class.text-muted]="user.isConnected === false">{{ user.name }}</span>
               <span *ngIf="user.isHost" class="badge bg-primary ms-2">HOST</span>
+              <span *ngIf="user.isConnected === false" class="badge bg-warning ms-2 text-dark">DISCONNECTED</span>
             </div>
             <button (click)="kickUser(user.id)" *ngIf="isRoomAdmin && user.id !== currentUserId"
                     class="btn btn-icon btn-sm btn-ghost-danger" title="Kick {{ user.name }}">
@@ -48,10 +50,8 @@
       </div>
     </div>
 
-    <!-- Divider -->
     <div class="section-divider"></div>
 
-    <!-- Bottom Section: Queue -->
     <div class="queue-section">
       <div class="queue-header mb-3">
         <h6 class="section-title d-flex align-items-center mb-2">
@@ -94,9 +94,7 @@
             </button>
           </div>
 
-          <!-- Status Messages -->
           <div class="status-messages mt-2">
-            <!-- Room Working Message (shown to all users) -->
             <div *ngIf="isRoomWorking" class="room-working-message">
               <small class="text-warning">
                 <lucide-icon class="me-1" name="clock" size="12"></lucide-icon>
@@ -104,21 +102,18 @@
               </small>
             </div>
 
-            <!-- Personal Loading Message (shown only to user who clicked) -->
             <div *ngIf="isAddingToQueue && !isRoomWorking" class="personal-loading-message">
               <small class="text-info">
                 <lucide-icon class="me-1" name="download" size="12"></lucide-icon>
                 Processing your video... This may take a moment.
               </small>
             </div>
-            <!-- Success Message -->
             <div *ngIf="addToQueueSuccess" class="success-message">
               <small class="text-success">
                 <lucide-icon class="me-1" name="check-circle" size="12"></lucide-icon>
                 Video added to queue! Download in progress...
               </small>
             </div>
-            <!-- Queue Full Warning -->
             <div *ngIf="queueItems.length >= 10" class="queue-full-warning">
               <small class="text-warning">
                 <lucide-icon class="me-1" name="alert-circle" size="12"></lucide-icon>
@@ -144,7 +139,6 @@
                   <div *ngIf="item.duration" class="queue-item-duration">
                     {{ formatDuration(item.duration) }}
                   </div>
-                  <!-- Download Progress -->
                   <div *ngIf="item.downloadStatus && item.downloadStatus !== 'completed'" class="download-status">
                     <span [ngSwitch]="item.downloadStatus" class="download-text">
                       <span *ngSwitchCase="'pending'" class="text-muted">
@@ -160,7 +154,6 @@
                         Download failed
                       </span>
                     </span>
-                    <!-- Progress Bar -->
                     <div *ngIf="item.downloadStatus === 'downloading'" class="progress mt-1" style="height: 3px;">
                       <div [attr.aria-valuenow]="item.downloadProgress || 0"
                            [style.width.%]="item.downloadProgress || 0"

@@ -18,9 +18,12 @@ export class ConfigService {
   get queueApiUrl(): string {
     return `${this.apiUrl}/api/queue`;
   }
-
   get musicApiUrl(): string {
     return `${this.apiUrl}/api/music`;
+  }
+
+  get participantsApiUrl(): string {
+    return `${this.apiUrl}/api/participants`;
   }
 
   get socketUrl(): string {
@@ -28,11 +31,9 @@ export class ConfigService {
   }
 
   getDownloadUrl(path: string): string {
-    // If the path is already a complete URL (Supabase URL), return it as-is
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
-    // Otherwise, prepend the API URL for local files
     return `${this.apiUrl}${path}`;
   }
 

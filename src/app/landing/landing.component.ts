@@ -3,6 +3,7 @@ import {Router} from '@angular/router';
 import {RoomService} from '../room.service';
 import {RoomStateService} from '../room-state.service';
 import {NotificationService} from '../notification.service';
+import {SecureStorageService} from '../services/secure-storage.service';
 
 @Component({
   selector: 'app-landing',
@@ -38,18 +39,14 @@ export class LandingComponent {
 
     const userName = 'Host';
     this.roomService.createRoom(userName).subscribe({
-      next: (response) => {        if (response.success) {
+      next: (response) => {
+        if (response.success) {
           this.roomCreated = true;
 
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
-          this.roomStateService.setInRoom(true);          // Store user data in localStorage for refresh detection
-          localStorage.setItem('listentogether_user', JSON.stringify({
-            user: response.data.user,
-            room: response.data.room,
-            roomCode: response.data.room.code,
-            timestamp: Date.now()
-          }));
+          this.roomStateService.setInRoom(true);
+          SecureStorageService.storeUserSession(response.data.user.id, response.data.room.code);
 
           this.notificationService.show('Room created successfully! Redirecting...', 'success');
 
@@ -74,18 +71,14 @@ export class LandingComponent {
 
     const userName = 'User';
     this.roomService.joinRoom(this.roomCode, userName).subscribe({
-      next: (response) => {        if (response.success) {
+      next: (response) => {
+        if (response.success) {
           this.roomJoined = true;
 
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
-          this.roomStateService.setInRoom(true);          // Store user data in localStorage for refresh detection
-          localStorage.setItem('listentogether_user', JSON.stringify({
-            user: response.data.user,
-            room: response.data.room,
-            roomCode: this.roomCode,
-            timestamp: Date.now()
-          }));
+          this.roomStateService.setInRoom(true);
+          SecureStorageService.storeUserSession(response.data.user.id, this.roomCode);
 
           this.notificationService.show('Successfully joined room! Redirecting...', 'success');
 
@@ -125,18 +118,15 @@ export class LandingComponent {
     this.isCreatingRoomLoading = true;
 
     this.roomService.createRoom(userName.trim()).subscribe({
-      next: (response) => {        if (response.success && response.data && response.data.room) {
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
           const roomCode = response.data.room.code;
+          const userId = response.data.user.id;
 
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
-          this.roomStateService.setInRoom(true);          // Store user data in localStorage for refresh detection
-          localStorage.setItem('listentogether_user', JSON.stringify({
-            user: response.data.user,
-            room: response.data.room,
-            roomCode: roomCode,
-            timestamp: Date.now()
-          }));
+          this.roomStateService.setInRoom(true);
+          SecureStorageService.storeUserSession(userId, roomCode);
 
           this.router.navigate(['/room', roomCode]);
         } else {

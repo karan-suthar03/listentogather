@@ -10,7 +10,6 @@ export class RoomStateService {
   private currentUser = new BehaviorSubject<User | null>(null);
   private isInRoom = new BehaviorSubject<boolean>(false);
 
-  // Observables
   getCurrentRoom(): Observable<Room | null> {
     return this.currentRoom.asObservable();
   }
@@ -23,7 +22,6 @@ export class RoomStateService {
     return this.isInRoom.asObservable();
   }
 
-  // Setters
   setRoom(room: Room | null): void {
     this.currentRoom.next(room);
   }
@@ -36,7 +34,6 @@ export class RoomStateService {
     this.isInRoom.next(inRoom);
   }
 
-  // Getters (synchronous)
   getRoomCode(): string {
     return this.currentRoom.value?.code || '';
   }
@@ -53,7 +50,6 @@ export class RoomStateService {
     return this.isInRoom.value;
   }
 
-  // Clear state
   clearState(): void {
     this.currentRoom.next(null);
     this.currentUser.next(null);

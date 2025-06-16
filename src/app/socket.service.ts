@@ -19,17 +19,14 @@ export class SocketService {
     });
   }
 
-  // Join a room
   joinRoom(roomCode: string, user: User): void {
     this.socket.emit('join-room', {roomCode, user});
   }
 
-  // Leave a room
   leaveRoom(roomCode: string): void {
     this.socket.emit('leave-room', {roomCode});
   }
 
-  // Listen for room updates
   onRoomUpdate(): Observable<Room> {
     return new Observable(observer => {
       this.socket.on('room-updated', (room: Room) => {
@@ -38,7 +35,6 @@ export class SocketService {
     });
   }
 
-  // Listen for user joined events
   onUserJoined(): Observable<{ user: User, room: Room }> {
     return new Observable(observer => {
       this.socket.on('user-joined', (data: { user: User, room: Room }) => {
@@ -47,7 +43,6 @@ export class SocketService {
     });
   }
 
-  // Listen for user left events
   onUserLeft(): Observable<{ user: User, room: Room }> {
     return new Observable(observer => {
       this.socket.on('user-left', (data: { user: User, room: Room }) => {
@@ -56,7 +51,22 @@ export class SocketService {
     });
   }
 
-  // Listen for participant list updates
+  onUserDisconnected(): Observable<{ userId: string, user: User, room: Room }> {
+    return new Observable(observer => {
+      this.socket.on('user-disconnected', (data: { userId: string, user: User, room: Room }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  onUserReconnected(): Observable<{ userId: string, user: User, room: Room }> {
+    return new Observable(observer => {
+      this.socket.on('user-reconnected', (data: { userId: string, user: User, room: Room }) => {
+        observer.next(data);
+      });
+    });
+  }
+
   onParticipantList(): Observable<User[]> {
     return new Observable(observer => {
       this.socket.on('participant-list', (participants: User[]) => {
@@ -65,12 +75,10 @@ export class SocketService {
     });
   }
 
-  // Request current participant list
   getParticipants(roomCode: string): void {
     this.socket.emit('get-participants', {roomCode});
   }
 
-  // Listen for music state updates
   onMusicState(): Observable<MusicSyncData> {
     return new Observable(observer => {
       this.socket.on('music-state', (syncData: MusicSyncData) => {
@@ -79,14 +87,14 @@ export class SocketService {
     });
   }
 
-  // Listen for errors
   onError(): Observable<{ message: string }> {
     return new Observable(observer => {
       this.socket.on('error', (error: { message: string }) => {
         observer.next(error);
       });
     });
-  }  // Music control methods (for any participant)
+  }
+
   playMusic(roomCode: string, userId: string): void {
     this.socket.emit('music-control', {
       roomCode,
@@ -137,7 +145,6 @@ export class SocketService {
     });
   }
 
-  // Host control methods (deprecated but kept for compatibility)
   hostPlay(roomCode: string, userId: string): void {
     this.socket.emit('host-control', {
       roomCode,
@@ -163,22 +170,18 @@ export class SocketService {
     });
   }
 
-  // Request sync state
   requestSync(roomCode: string): void {
     this.socket.emit('sync-request', {roomCode});
   }
 
-  // Disconnect socket
   disconnect(): void {
     this.socket.disconnect();
   }
 
-  // Check if connected
   isConnected(): boolean {
     return this.socket.connected;
   }
 
-  // Listen for queue item progress updates
   onQueueItemProgress(): Observable<{ queueItemId: string, progress: number, status: string }> {
     return new Observable(observer => {
       this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
@@ -187,7 +190,6 @@ export class SocketService {
     });
   }
 
-  // Listen for queue item completion
   onQueueItemComplete(): Observable<{ queueItemId: string, mp3Url: string, status: string }> {
     return new Observable(observer => {
       this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
@@ -196,7 +198,6 @@ export class SocketService {
     });
   }
 
-  // Listen for queue item errors
   onQueueItemError(): Observable<{ queueItemId: string, error: string, status: string }> {
     return new Observable(observer => {
       this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
@@ -205,7 +206,6 @@ export class SocketService {
     });
   }
 
-  // Listen for queue updates
   onQueueUpdated(): Observable<{ queue: any[], currentTrackIndex: number }> {
     return new Observable(observer => {
       this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
@@ -214,7 +214,6 @@ export class SocketService {
     });
   }
 
-  // Listen for room working state changes
   onRoomWorkingStateChanged(): Observable<{ isWorking: boolean, workingMessage: string }> {
     return new Observable(observer => {
       this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {

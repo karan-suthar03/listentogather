@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { RoomService } from '../room.service';
 import { RoomStateService } from '../room-state.service';
 import { NotificationService } from '../notification.service';
+import { SecureStorageService } from '../services/secure-storage.service';
 
 @Component({
   selector: 'app-join-room',
@@ -70,17 +71,14 @@ export class JoinRoomComponent implements OnInit {
     const cleanUserName = this.userName.trim();
 
     this.roomService.joinRoom(this.roomCode, cleanUserName).subscribe({
-      next: (response) => {
-        if (response.success && response.data && response.data.room) {
+      next: (response) => {        if (response.success && response.data && response.data.room) {
+          const userId = response.data.user.id;
+          
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
           this.roomStateService.setInRoom(true);
-          localStorage.setItem('listentogether_user', JSON.stringify({
-            user: response.data.user,
-            room: response.data.room,
-            roomCode: this.roomCode,
-            timestamp: Date.now()
-          }));
+          
+          SecureStorageService.storeUserSession(userId, this.roomCode);
 
           this.router.navigate(['/room', this.roomCode]);
         } else {

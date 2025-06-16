@@ -5,6 +5,7 @@ import {SocketService} from '../socket.service';
 import {RoomService} from '../room.service';
 import {NotificationService} from '../notification.service';
 import {Subscription} from 'rxjs';
+import {SecureStorageService} from '../services/secure-storage.service';
 
 @Component({
   selector: 'app-room',
@@ -19,7 +20,6 @@ export class RoomComponent implements OnInit, OnDestroy {
   centerWidth = 60;
   rightWidth = 20;
 
-  // Loading states
   isLoading = true;
   loadingMessage = 'Loading room...';
 
@@ -42,23 +42,19 @@ export class RoomComponent implements OnInit, OnDestroy {
     document.addEventListener('mousemove', this.onMouseMove.bind(this));
     document.addEventListener('mouseup', this.onMouseUp.bind(this));
 
-    // Safety timeout to prevent infinite loading
     setTimeout(() => {
       if (this.isLoading) {
         console.warn('Room loading timed out, redirecting to landing page');
         this.redirectToLandingWithError('Loading timed out. Please try again.');
       }
-    }, 10000); // 10 second timeout
+    }, 10000); 
 
-    // Get room code from route
     this.route.params.subscribe(params => {
       this.roomCode = params['roomCode'] || '';
 
       if (this.roomCode) {
-        // First validate that the room exists
         this.validateRoomExists(this.roomCode);
       } else {
-        // No room code, redirect to landing
         this.redirectToLandingWithError('Invalid room code');
       }
     });
@@ -68,7 +64,6 @@ export class RoomComponent implements OnInit, OnDestroy {
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mouseup', this.onMouseUp);
 
-    // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
@@ -94,9 +89,8 @@ export class RoomComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.loadingMessage = 'Checking room...';
     
-    // Add a minimum loading time for better UX
     const startTime = Date.now();
-    const minLoadingTime = 500; // 500ms minimum
+    const minLoadingTime = 500; 
     
     this.roomService.getRoomDetails(roomCode).subscribe({
       next: (response) => {
@@ -105,11 +99,9 @@ export class RoomComponent implements OnInit, OnDestroy {
         
         setTimeout(() => {
           if (response.success && response.data) {
-            // Room exists, proceed with normal flow
             this.loadingMessage = 'Loading room...';
             this.proceedWithRoomAccess();
           } else {
-            // Room doesn't exist
             this.redirectToLandingWithError('Room not found or has ended');
           }
         }, remainingTime);
@@ -128,22 +120,19 @@ export class RoomComponent implements OnInit, OnDestroy {
         }, remainingTime);
       }
     });
-  }  private proceedWithRoomAccess(): void {
+  }  private async proceedWithRoomAccess(): Promise<void> {
     this.loadingMessage = 'Checking user session...';
     console.log('🔍 Proceeding with room access for room:', this.roomCode);
     
-    // Get current user state immediately (synchronous check first)
     const currentUser = this.roomStateService.getUser();
     console.log('👤 Current user:', currentUser);
     
     if (this.roomCode && !currentUser) {
-      console.log('📂 No current user, checking localStorage...');
-      // Check localStorage for existing user data
-      const savedUserData = this.checkLocalStorageForUser(this.roomCode);
+      console.log('📂 No current user, checking session...');
+      const savedUserData = await this.checkLocalStorageForUser(this.roomCode);
       console.log('💾 Saved user data:', savedUserData);
 
       if (savedUserData) {
-        // Restore user session
         console.log('✅ Restoring user session');
         this.loadingMessage = 'Restoring session...';
         this.roomStateService.setUser(savedUserData.user);
@@ -152,66 +141,60 @@ export class RoomComponent implements OnInit, OnDestroy {
         }
         this.roomStateService.setInRoom(true);
         this.ensureSocketConnection();
-        this.isLoading = false; // Room loaded successfully
+        this.isLoading = false; 
         console.log('🎉 Room loaded successfully');
       } else {
-        // No user state, redirect to join page
         console.log('🚪 No saved data, redirecting to join page');
-        this.isLoading = false; // Stop loading before redirect
+        this.isLoading = false; 
         this.router.navigate(['/join', this.roomCode]);
       }
     } else if (currentUser && this.roomCode) {
-      // We have both room code and user, ensure socket connection
       console.log('🔌 User exists, connecting to room');
       this.loadingMessage = 'Connecting to room...';
       this.ensureSocketConnection();
-      this.isLoading = false; // Room loaded successfully
+      this.isLoading = false; 
       console.log('🎉 Room loaded successfully');
     } else {
-      // Fallback: if no user and no saved data, redirect to join
       console.log('❌ Fallback: redirecting to join page');
       this.isLoading = false;
       this.router.navigate(['/join', this.roomCode]);
     }
   }
   private redirectToLandingWithError(message: string): void {
-    // Stop loading
     this.isLoading = false;
     
-    // Show notification
     this.notificationService.error(message, 5000);
     
-    // Redirect to landing page
     this.router.navigate(['/']);
   }
+  private async checkLocalStorageForUser(roomCode: string): Promise<any> {
+    const sessionData = SecureStorageService.getUserSession();
+    
+    if (!sessionData || sessionData.roomCode !== roomCode) {
+      return null;
+    }
 
-  private checkLocalStorageForUser(roomCode: string): any {
     try {
-      const savedUserData = localStorage.getItem('listentogether_user');
-      if (savedUserData) {
-        const userData = JSON.parse(savedUserData);
-        const isDataValid = userData && 
-                           userData.roomCode === roomCode && 
-                           userData.timestamp && 
-                           (Date.now() - userData.timestamp) < 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (isDataValid) {
-          return userData;
-        } else {
-          localStorage.removeItem('listentogether_user');
-        }
+      const response = await this.roomService.getUserInfo(roomCode, sessionData.userId).toPromise();
+      
+      if (response.success && response.data) {
+        return {
+          user: response.data,
+          roomCode: roomCode,
+          timestamp: sessionData.timestamp
+        };
       }
     } catch (error) {
-      console.error('Error reading localStorage:', error);
-      localStorage.removeItem('listentogether_user');
+      console.error('Error fetching user info:', error);
+      SecureStorageService.clearUserSession();
     }
+    
     return null;
   }
 
   private ensureSocketConnection(): void {
     const currentUser = this.roomStateService.getUser();
     if (currentUser && this.roomCode) {
-      // Make sure socket is connected and user is joined to the room
       this.socketService.joinRoom(this.roomCode, currentUser);
       this.socketService.getParticipants(this.roomCode);
     }

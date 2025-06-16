@@ -26,10 +26,8 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   isRoomWorking: boolean = false;
   roomWorkingMessage: string = '';
 
-  // Queue management
   queueItems: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  // Socket subscriptions
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -42,7 +40,7 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   ) {
   }
 
-  ngOnInit(): void {    // Get current room and user from room state service
+  ngOnInit(): void {
     this.subscriptions.push(
       this.roomStateService.getCurrentRoom().subscribe(room => {
         if (room) {
@@ -50,7 +48,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
           this.roomCode = room.code;
           this.users = room.members;
           this.isRoomAdmin = this.user?.isHost || false;
-          // Load queue when room is set
           this.loadQueue();
         }
       })
@@ -63,10 +60,9 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
           this.isRoomAdmin = user.isHost;
         }
       })
-    );    // Start with buttons only - no auto room creation
+    );
     this.setupSocketListeners();
 
-    // Subscribe to queue updates from the queue service
     this.subscriptions.push(
       this.queueService.queue$.subscribe(queueData => {
         this.queueItems = queueData.queue;
@@ -74,7 +70,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Subscribe to working state
     this.subscriptions.push(
       this.workingStateService.workingState$.subscribe(workingState => {
         this.isRoomWorking = workingState.isWorking;
@@ -84,10 +79,8 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
 
-    // Leave room and disconnect socket
     if (this.roomCode) {
       this.socketService.leaveRoom(this.roomCode);
     }
@@ -105,17 +98,14 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   addVideoToQueue(): void {
     if (this.youtubeUrl.trim() && this.roomCode && !this.isAddingToQueue && !this.isRoomWorking) {
-      // Set loading state
       this.isAddingToQueue = true;
 
-      // Detect URL type and set appropriate processing message
       const url = this.youtubeUrl.trim();
       const isSpotify = this.isSpotifyUrl(url);
       const isYouTube = this.isYouTubeUrl(url);
 
       let processingMessage = 'Processing URL...';
       if (isSpotify) {
-        // Check if it's a Spotify playlist
         if (url.includes('/playlist/')) {
           processingMessage = 'Processing Spotify playlist...';
         } else {
@@ -125,10 +115,8 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         processingMessage = 'Processing YouTube video...';
       }
 
-      // Set local working state (will be overridden by server response)
       this.workingStateService.setLocalWorking(true, processingMessage);
 
-      // Prepare song data for server
       const songData: any = {
         title: 'Loading...',
         artist: 'Fetching info...',
@@ -137,13 +125,11 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
         mp3Url: ''
       };
 
-      // Add URL to appropriate field
       if (isSpotify) {
         songData.spotifyUrl = url;
       } else if (isYouTube) {
         songData.youtubeUrl = url;
       } else {
-        // Try as YouTube URL by default
         songData.youtubeUrl = url;
       }
 
@@ -151,7 +137,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
       this.queueService.addToQueue(this.roomCode, songData, addedByName).subscribe({
         next: (response) => {
-          // Show success message with source info
           let successMessage = 'Added to queue!';
           if (response.source === 'spotify') {
             if (response.type === 'playlist') {
@@ -175,19 +160,15 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
           if (response.type === 'playlist') {
             this.notificationService.success(successMessage, 5000);
           } else {
-            // Hide success message after 3 seconds for single tracks
             setTimeout(() => {
               this.addToQueueSuccess = false;
             }, 3000);
           }
-
-          // No need to manually refresh - socket will handle updates
         },
         error: (error) => {
           console.error('Error adding to queue:', error);
           this.isAddingToQueue = false;
 
-          // Clear working state on error
           this.workingStateService.setLocalWorking(false, '');
 
           let errorMessage = 'Failed to add to queue. Please try again.';
@@ -242,7 +223,7 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
       this.queueService.removeFromQueue(this.roomCode, index).subscribe({
         next: (response) => {
-          this.loadQueue(); // Refresh queue
+          this.loadQueue();
         },
         error: (error) => {
           console.error('🗑️ Error removing from queue:', error);
@@ -264,7 +245,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     this.socketService.playTrackAtIndex(this.roomCode, this.user.id, index);
   }
 
-  // Helper methods for URL detection
   isYouTubeUrl(url: string): boolean {
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
     return youtubeRegex.test(url);
@@ -276,7 +256,6 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners(): void {
-    // Listen for room updates
     const roomUpdateSub = this.socketService.onRoomUpdate().subscribe((room: Room) => {
       this.room = room;
       this.users = room.members;
@@ -285,31 +264,50 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(roomUpdateSub);
 
-    // Listen for user joined events
     const userJoinedSub = this.socketService.onUserJoined().subscribe((data) => {
       this.users = data.room.members;
       this.roomStateService.setRoom(data.room);
 
-      // Show notification if it's not the current user
       if (data.user.id !== this.currentUserId) {
         this.notificationService.info(`${data.user.name} joined the room`, 2000);
       }
     });
     this.subscriptions.push(userJoinedSub);
 
-    // Listen for user left events
     const userLeftSub = this.socketService.onUserLeft().subscribe((data) => {
       this.users = data.room.members;
       this.roomStateService.setRoom(data.room);
 
-      // Show notification if it's not the current user
       if (data.user.id !== this.currentUserId) {
-        this.notificationService.info(`${data.user.name} left the room`, 2000);
+        const reason = (data as any).reason;
+        const message = reason === 'timeout' 
+          ? `${data.user.name} was disconnected` 
+          : `${data.user.name} left the room`;
+        this.notificationService.info(message, 2000);
       }
     });
     this.subscriptions.push(userLeftSub);
 
-    // Listen for participant list updates
+    const userDisconnectedSub = this.socketService.onUserDisconnected().subscribe((data) => {
+      this.users = data.room.members;
+      this.roomStateService.setRoom(data.room);
+
+      if (data.userId !== this.currentUserId) {
+        this.notificationService.warning(`${data.user.name} disconnected (will be removed in 1 minute)`, 3000);
+      }
+    });
+    this.subscriptions.push(userDisconnectedSub);
+
+    const userReconnectedSub = this.socketService.onUserReconnected().subscribe((data) => {
+      this.users = data.room.members;
+      this.roomStateService.setRoom(data.room);
+
+      if (data.userId !== this.currentUserId) {
+        this.notificationService.success(`${data.user.name} reconnected`, 2000);
+      }
+    });
+    this.subscriptions.push(userReconnectedSub);
+
     const participantListSub = this.socketService.onParticipantList().subscribe((participants) => {
       this.users = participants;
     });

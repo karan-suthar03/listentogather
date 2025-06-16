@@ -2,6 +2,8 @@ export interface User {
   id: string;
   name: string;
   isHost: boolean;
+  isConnected?: boolean;
+  disconnectedAt?: number;
 }
 
 export interface MusicMetadata {
