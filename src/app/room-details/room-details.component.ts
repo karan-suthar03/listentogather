@@ -6,6 +6,7 @@ import {SocketService} from '../socket.service';
 import {RoomStateService} from '../room-state.service';
 import {NotificationService} from '../notification.service';
 import {WorkingStateService} from '../working-state.service';
+import {MusicService} from '../music.service';
 import {Subscription} from 'rxjs';
 import {Router} from '@angular/router';
 import {SecureStorageService} from '../services/secure-storage.service';
@@ -30,15 +31,15 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   queueItems: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  private subscriptions: Subscription[] = [];
-  constructor(
+  private subscriptions: Subscription[] = [];  constructor(
     private roomService: RoomService,
     private socketService: SocketService,
     private roomStateService: RoomStateService,
     private notificationService: NotificationService,
     private queueService: QueueService,
     private workingStateService: WorkingStateService,
-    private router: Router
+    private router: Router,
+    private musicService: MusicService
   ) {
   }
 
@@ -336,9 +337,11 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(errorSub);
   }
-
   private handleRoomDeleted(message: string): void {
     console.log('🏠 Handling room deletion, redirecting to landing page');
+
+    // Stop music playback immediately
+    this.musicService.destroy();
 
     // Clear room state
     this.roomStateService.setRoom(null);
