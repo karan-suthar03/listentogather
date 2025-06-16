@@ -45,6 +45,12 @@ export class RoomComponent implements OnInit, OnDestroy {
     document.addEventListener('mousemove', this.onMouseMove.bind(this));
     document.addEventListener('mouseup', this.onMouseUp.bind(this));
 
+    // Setup room deletion listeners
+    this.setupRoomDeletionListeners();
+
+    // Setup additional error handling for HTTP requests
+    this.setupHttpErrorHandling();
+
     setTimeout(() => {
       if (this.isLoading) {
         console.warn('Room loading timed out, redirecting to landing page');
@@ -208,6 +214,84 @@ export class RoomComponent implements OnInit, OnDestroy {
       this.socketService.joinRoom(this.roomCode, currentUser);
       this.socketService.getParticipants(this.roomCode);
     }
+  }
+
+  private setupRoomDeletionListeners(): void {
+    // Listen for room deletion events
+    const roomDeletedSub = this.socketService.onRoomDeleted().subscribe((data) => {
+      console.log('🗑️ Room deleted:', data);
+      this.handleRoomDeleted(data.message || 'Room has been deleted');
+    });
+    this.subscriptions.push(roomDeletedSub);
+
+    // Listen for force disconnect events
+    const forceDisconnectSub = this.socketService.onForceDisconnect().subscribe((data) => {
+      console.log('🚪 Force disconnect:', data);
+      this.handleRoomDeleted(data.message || 'You have been disconnected from the room');
+    });
+    this.subscriptions.push(forceDisconnectSub);
+
+    // Listen for socket errors that might indicate room issues
+    const errorSub = this.socketService.onError().subscribe((error) => {
+      console.log('❌ Socket error:', error);
+      if (error.message.includes('Room not found') || error.message.includes('room not found')) {
+        this.handleRoomDeleted('Room not found or has been deleted');
+      }
+    });
+    this.subscriptions.push(errorSub);    // Also listen for when socket disconnects unexpectedly (room might have been deleted)
+    const disconnectSub = this.socketService.onSocketDisconnect().subscribe((reason: string) => {
+      console.log('🔌 Socket disconnected:', reason);
+      if (this.roomCode && !this.isLoading) {
+        // Small delay to avoid immediate reconnection issues
+        setTimeout(() => {
+          this.validateRoomStillExists();
+        }, 1000);
+      }
+    });
+    this.subscriptions.push(disconnectSub);
+  }  private setupHttpErrorHandling(): void {
+    // This method can be extended to handle HTTP errors globally
+    // For now, the individual API calls in validateRoomExists already handle 404 errors
+    console.log('📡 HTTP error handling setup complete');
+  }
+
+  private validateRoomStillExists(): void {
+    if (!this.roomCode) return;
+    
+    this.roomService.getRoomDetails(this.roomCode).subscribe({
+      next: (response) => {
+        if (!response.success || !response.data) {
+          this.handleRoomDeleted('Room no longer exists');
+        }
+      },
+      error: (error) => {
+        if (error.status === 404) {
+          this.handleRoomDeleted('Room not found or has been deleted');
+        }
+      }
+    });
+  }
+
+  private handleRoomDeleted(message: string): void {
+    console.log('🏠 Handling room deletion, redirecting to landing page');
+    
+    // Clear room state
+    this.roomStateService.setRoom(null);
+    this.roomStateService.setUser(null);
+    this.roomStateService.setInRoom(false);
+    
+    // Clear local storage
+    try {
+      SecureStorageService.clearUserSession();
+    } catch (error) {
+      console.error('Error clearing user session:', error);
+    }
+    
+    // Disconnect socket
+    this.socketService.disconnect();
+    
+    // Show notification and redirect
+    this.redirectToLandingWithError(message);
   }
 
   private onMouseMove(event: MouseEvent) {

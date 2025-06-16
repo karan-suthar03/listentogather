@@ -7,6 +7,8 @@ import {RoomStateService} from '../room-state.service';
 import {NotificationService} from '../notification.service';
 import {WorkingStateService} from '../working-state.service';
 import {Subscription} from 'rxjs';
+import {Router} from '@angular/router';
+import {SecureStorageService} from '../services/secure-storage.service';
 
 @Component({
   selector: 'app-room-details',
@@ -29,14 +31,14 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
   queueItems: QueueItem[] = [];
   currentTrackIndex: number = -1;
   private subscriptions: Subscription[] = [];
-
   constructor(
     private roomService: RoomService,
     private socketService: SocketService,
     private roomStateService: RoomStateService,
     private notificationService: NotificationService,
     private queueService: QueueService,
-    private workingStateService: WorkingStateService
+    private workingStateService: WorkingStateService,
+    private router: Router
   ) {
   }
 
@@ -312,5 +314,49 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       this.users = participants;
     });
     this.subscriptions.push(participantListSub);
+
+    // Room deletion handlers
+    const roomDeletedSub = this.socketService.onRoomDeleted().subscribe((data) => {
+      console.log('🗑️ Room deleted:', data);
+      this.handleRoomDeleted(data.message || 'Room has been deleted');
+    });
+    this.subscriptions.push(roomDeletedSub);
+
+    const forceDisconnectSub = this.socketService.onForceDisconnect().subscribe((data) => {
+      console.log('🚪 Force disconnect:', data);
+      this.handleRoomDeleted(data.message || 'You have been disconnected from the room');
+    });
+    this.subscriptions.push(forceDisconnectSub);
+
+    const errorSub = this.socketService.onError().subscribe((error) => {
+      console.log('❌ Socket error:', error);
+      if (error.message.includes('Room not found') || error.message.includes('room not found')) {
+        this.handleRoomDeleted('Room not found or has been deleted');
+      }
+    });
+    this.subscriptions.push(errorSub);
+  }
+
+  private handleRoomDeleted(message: string): void {
+    console.log('🏠 Handling room deletion, redirecting to landing page');
+
+    // Clear room state
+    this.roomStateService.setRoom(null);
+    this.roomStateService.setUser(null);
+    this.roomStateService.setInRoom(false);
+
+    // Clear local storage
+    try {
+      SecureStorageService.clearUserSession();
+    } catch (error) {
+      console.error('Error clearing user session:', error);
+    }
+
+    // Disconnect socket
+    this.socketService.disconnect();
+
+    // Show notification and redirect
+    this.notificationService.error(message, 5000);
+    this.router.navigate(['/']);
   }
 }

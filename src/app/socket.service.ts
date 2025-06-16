@@ -221,4 +221,36 @@ export class SocketService {
       });
     });
   }
+
+  onRoomDeleted(): Observable<{ roomCode: string, reason: string, message: string }> {
+    return new Observable(observer => {
+      this.socket.on('room-deleted', (data: { roomCode: string, reason: string, message: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  onForceDisconnect(): Observable<{ reason: string, message: string }> {
+    return new Observable(observer => {
+      this.socket.on('force-disconnect', (data: { reason: string, message: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  onSocketDisconnect(): Observable<string> {
+    return new Observable(observer => {
+      this.socket.on('disconnect', (reason: string) => {
+        observer.next(reason);
+      });
+    });
+  }
+
+  onSocketConnect(): Observable<void> {
+    return new Observable(observer => {
+      this.socket.on('connect', () => {
+        observer.next();
+      });
+    });
+  }
 }
