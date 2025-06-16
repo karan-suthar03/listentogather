@@ -21,12 +21,30 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   isPlaying: boolean = false;
   currentTime: number = 0;
   duration: number = 0;
-  volume: number = 0.5;
+  volume: number = 1.0;
   isMuted: boolean = false;
-  previousVolume: number = 0.5;
+  previousVolume: number = 1.0;
 
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
+
+  // Drag state for sliders
+  isDraggingProgress: boolean = false;
+  isDraggingVolume: boolean = false;
+
+  // Bound event handlers for proper cleanup
+  private boundProgressMouseMove?: (event: MouseEvent) => void;
+  private boundProgressMouseUp?: (event: MouseEvent) => void;
+  private boundVolumeMouseMove?: (event: MouseEvent) => void;
+  private boundVolumeMouseUp?: (event: MouseEvent) => void;
+  
+  // Store slider elements during drag for better UX
+  private draggingProgressElement?: HTMLElement;
+  private draggingVolumeElement?: HTMLElement;
+  
+  // Throttling for progress updates
+  private lastProgressUpdate: number = 0;
+  private progressUpdateThrottle: number = 100; // 100ms between updates
 
   private subscriptions: Subscription[] = [];
 
@@ -41,10 +59,30 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupRoomStateListeners();
     this.setupMusicListeners();
+    // Set initial volume to 100%
+    this.musicService.setVolume(this.volume);
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    
+    // Clear stored element references
+    this.draggingProgressElement = undefined;
+    this.draggingVolumeElement = undefined;
+    
+    // Clean up any active drag listeners
+    if (this.boundProgressMouseMove) {
+      document.removeEventListener('mousemove', this.boundProgressMouseMove);
+    }
+    if (this.boundProgressMouseUp) {
+      document.removeEventListener('mouseup', this.boundProgressMouseUp);
+    }
+    if (this.boundVolumeMouseMove) {
+      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
+    }
+    if (this.boundVolumeMouseUp) {
+      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
+    }
   }
 
   togglePlay(): void {
@@ -207,7 +245,10 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
     const playbackSub = this.musicService.getPlaybackState().subscribe(state => {
       this.isPlaying = state.isPlaying;
-      this.currentTime = state.currentTime;
+      // Only update currentTime if we're not currently dragging the progress slider
+      if (!this.isDraggingProgress) {
+        this.currentTime = state.currentTime;
+      }
     });
     this.subscriptions.push(playbackSub);
 
@@ -222,5 +263,148 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       alert(error.message);
     });
     this.subscriptions.push(errorSub);
+  }  // Progress bar drag functionality
+  onProgressMouseDown(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
+      return;
+    }
+
+    this.isDraggingProgress = true;
+    
+    // Store the progress element for the entire drag operation
+    let progressElement = event.target as HTMLElement;
+    while (progressElement && !progressElement.classList.contains('progress-track')) {
+      progressElement = progressElement.parentElement as HTMLElement;
+    }
+    this.draggingProgressElement = progressElement;
+    
+    this.updateProgressFromEvent(event, false); // Don't send to server during drag start
+    
+    // Create bound functions for proper cleanup
+    this.boundProgressMouseMove = this.onProgressMouseMove.bind(this);
+    this.boundProgressMouseUp = this.onProgressMouseUp.bind(this);
+    
+    // Add global mouse event listeners
+    document.addEventListener('mousemove', this.boundProgressMouseMove);
+    document.addEventListener('mouseup', this.boundProgressMouseUp);
+    
+    // Prevent text selection during drag
+    event.preventDefault();
+  }
+
+  onProgressMouseMove(event: MouseEvent): void {
+    if (!this.isDraggingProgress) return;
+    this.updateProgressFromEvent(event, false); // Don't send to server during drag
+  }
+
+  onProgressMouseUp(event: MouseEvent): void {
+    if (!this.isDraggingProgress) return;
+    
+    this.isDraggingProgress = false;
+    // Final update when drag ends - this one DOES send to server
+    this.updateProgressFromEvent(event, true);
+    
+    // Clear the stored element reference
+    this.draggingProgressElement = undefined;
+    
+    // Remove global mouse event listeners
+    if (this.boundProgressMouseMove) {
+      document.removeEventListener('mousemove', this.boundProgressMouseMove);
+    }
+    if (this.boundProgressMouseUp) {
+      document.removeEventListener('mouseup', this.boundProgressMouseUp);
+    }
+  }  private updateProgressFromEvent(event: MouseEvent, sendToServer: boolean = true): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
+
+    // Use the stored progress element if we're dragging, otherwise find it
+    let progressElement = this.draggingProgressElement;
+    if (!progressElement) {
+      progressElement = event.target as HTMLElement;
+      while (progressElement && !progressElement.classList.contains('progress-track')) {
+        progressElement = progressElement.parentElement as HTMLElement;
+      }
+    }
+    if (!progressElement) return;
+
+    const rect = progressElement.getBoundingClientRect();
+    const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const percentage = clickX / rect.width;
+    const seekTime = percentage * this.duration;
+
+    // Update local display immediately for smooth dragging
+    this.currentTime = seekTime;
+    
+    // Only send to server if requested (on click or drag end)
+    if (sendToServer) {
+      this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
+    }
+  }// Volume slider drag functionality
+  onVolumeMouseDown(event: MouseEvent): void {
+    this.isDraggingVolume = true;
+    
+    // Store the volume element for the entire drag operation
+    let volumeElement = event.target as HTMLElement;
+    while (volumeElement && !volumeElement.classList.contains('volume-track')) {
+      volumeElement = volumeElement.parentElement as HTMLElement;
+    }
+    this.draggingVolumeElement = volumeElement;
+    
+    this.updateVolumeFromEvent(event); // Update volume immediately for real-time feedback
+    
+    // Create bound functions for proper cleanup
+    this.boundVolumeMouseMove = this.onVolumeMouseMove.bind(this);
+    this.boundVolumeMouseUp = this.onVolumeMouseUp.bind(this);
+    
+    // Add global mouse event listeners
+    document.addEventListener('mousemove', this.boundVolumeMouseMove);
+    document.addEventListener('mouseup', this.boundVolumeMouseUp);
+    
+    // Prevent text selection during drag
+    event.preventDefault();
+  }
+
+  onVolumeMouseMove(event: MouseEvent): void {
+    if (!this.isDraggingVolume) return;
+    this.updateVolumeFromEvent(event); // Continuous volume updates for real-time feedback
+  }
+
+  onVolumeMouseUp(event: MouseEvent): void {
+    if (!this.isDraggingVolume) return;
+    
+    this.isDraggingVolume = false;
+    this.updateVolumeFromEvent(event); // Final volume update
+    
+    // Clear the stored element reference
+    this.draggingVolumeElement = undefined;
+    
+    // Remove global mouse event listeners
+    if (this.boundVolumeMouseMove) {
+      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
+    }
+    if (this.boundVolumeMouseUp) {
+      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
+    }
+  }
+
+  private updateVolumeFromEvent(event: MouseEvent): void {
+    // Use the stored volume element if we're dragging, otherwise find it
+    let volumeElement = this.draggingVolumeElement;
+    if (!volumeElement) {
+      volumeElement = event.target as HTMLElement;
+      while (volumeElement && !volumeElement.classList.contains('volume-track')) {
+        volumeElement = volumeElement.parentElement as HTMLElement;
+      }
+    }
+    if (!volumeElement) return;
+
+    const rect = volumeElement.getBoundingClientRect();
+    const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+
+    // Update local display and audio volume immediately for real-time feedback
+    this.volume = percentage;
+    this.isMuted = false;
+    this.musicService.setVolume(percentage);
   }
 }

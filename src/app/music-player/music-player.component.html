@@ -66,7 +66,9 @@
             <span class="time-display">{{ formatTime(currentTime) }}</span>
             <div class="progress-container">
               <div (click)="onProgressClick($event)"
+                   (mousedown)="onProgressMouseDown($event)"
                    [class.interactive]="currentUser"
+                   [class.dragging]="isDraggingProgress"
                    class="progress-track">
                 <div [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
                      class="progress-fill"></div>
@@ -89,7 +91,10 @@
             <lucide-icon [name]="getVolumeIcon()" size="18"></lucide-icon>
           </button>
           <div class="volume-control">
-            <div (click)="onVolumeClick($event)" class="volume-track">
+            <div (click)="onVolumeClick($event)"
+                 (mousedown)="onVolumeMouseDown($event)"
+                 [class.dragging]="isDraggingVolume"
+                 class="volume-track">
               <div [style.width.%]="isMuted ? 0 : volume * 100" class="volume-fill"></div>
               <div [style.left.%]="isMuted ? 0 : volume * 100"
                    class="volume-handle"></div>

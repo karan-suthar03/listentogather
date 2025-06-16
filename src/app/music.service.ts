@@ -14,9 +14,9 @@ export class MusicService {
     isPlaying: false,
     currentTime: 0
   });
-
   constructor(private configService: ConfigService) {
     this.audioPlayer = new Audio();
+    this.audioPlayer.volume = 1.0; // Set default volume to 100%
     this.setupAudioListeners();
   }
 

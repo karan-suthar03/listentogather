@@ -383,6 +383,36 @@
   gap: 8px;
 }
 
+/* Dragging states for better UX */
+.progress-track.dragging {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.progress-track.dragging .progress-handle {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1.3) !important;
+}
+
+.volume-track.dragging {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.volume-track.dragging .volume-handle {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1.3) !important;
+}
+
+/* Prevent text selection during drag */
+.dragging,
+.dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .player-container {
