@@ -24,8 +24,7 @@
       <div *ngIf="roomNotFound && !loadingRoomDetails" class="error-state">
         <lucide-icon [size]="48" class="error-icon" name="alert-circle"></lucide-icon>
         <h3>Room Not Found</h3>
-        <p>The room code <span class="room-code-display">{{ roomCode }}</span> doesn't exist or has expired.</p>
-        <button (click)="goToLanding()" class="back-button">
+        <p>The room code <span class="room-code-display">{{ roomCode }}</span> doesn't exist or has expired.</p>        <button (click)="goToLanding()" class="back-button">
           <lucide-icon [size]="18" name="chevron-left"></lucide-icon>
           Back to Home
         </button>
@@ -99,11 +98,8 @@
                 Joining...
               </span>
             </span>
-          </button>
-
-          <button
+          </button>          <button
             (click)="goToLanding()"
-            [disabled]="isJoining"
             class="back-button"
           >
             <lucide-icon [size]="18" name="chevron-left"></lucide-icon>
