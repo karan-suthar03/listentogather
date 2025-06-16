@@ -13,9 +13,11 @@ export class RoomService {
   createRoom(userName: string): Observable<RoomCreationResponse> {
     return this.http.post<RoomCreationResponse>(this.configService.roomsApiUrl, {name: userName});
   }
+
   joinRoom(code: string, userName: string): Observable<JoinRoomResponse> {
     return this.http.post<JoinRoomResponse>(`${this.configService.roomsApiUrl}/join`, {code, name: userName});
   }
+
   getRoomDetails(roomCode: string): Observable<any> {
     return this.http.get<any>(`${this.configService.roomsApiUrl}/${roomCode}`);
   }

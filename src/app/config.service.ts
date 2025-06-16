@@ -18,6 +18,7 @@ export class ConfigService {
   get queueApiUrl(): string {
     return `${this.apiUrl}/api/queue`;
   }
+
   get musicApiUrl(): string {
     return `${this.apiUrl}/api/music`;
   }

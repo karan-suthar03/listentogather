@@ -280,8 +280,8 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
       if (data.user.id !== this.currentUserId) {
         const reason = (data as any).reason;
-        const message = reason === 'timeout' 
-          ? `${data.user.name} was disconnected` 
+        const message = reason === 'timeout'
+          ? `${data.user.name} was disconnected`
           : `${data.user.name} left the room`;
         this.notificationService.info(message, 2000);
       }

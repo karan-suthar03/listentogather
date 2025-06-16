@@ -29,7 +29,7 @@ export class SecureStorageService {
       if (!stored) return null;
 
       const sessionData = JSON.parse(stored);
-      
+
       // Validate session data structure
       if (!sessionData.userId || !sessionData.roomCode || !sessionData.timestamp) {
         this.clearUserSession();

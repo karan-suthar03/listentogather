@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { RoomService } from '../room.service';
-import { RoomStateService } from '../room-state.service';
-import { NotificationService } from '../notification.service';
-import { SecureStorageService } from '../services/secure-storage.service';
+import {Component, OnInit} from '@angular/core';
+import {ActivatedRoute, Router} from '@angular/router';
+import {RoomService} from '../room.service';
+import {RoomStateService} from '../room-state.service';
+import {NotificationService} from '../notification.service';
+import {SecureStorageService} from '../services/secure-storage.service';
 
 @Component({
   selector: 'app-join-room',
@@ -24,7 +24,8 @@ export class JoinRoomComponent implements OnInit {
     private roomService: RoomService,
     private roomStateService: RoomStateService,
     private notificationService: NotificationService
-  ) {}
+  ) {
+  }
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -40,7 +41,7 @@ export class JoinRoomComponent implements OnInit {
   loadRoomDetails() {
     this.loadingRoomDetails = true;
     this.roomNotFound = false;
-    
+
     this.roomService.getRoomDetails(this.roomCode).subscribe({
       next: (response) => {
         if (response.success && response.data) {
@@ -71,13 +72,14 @@ export class JoinRoomComponent implements OnInit {
     const cleanUserName = this.userName.trim();
 
     this.roomService.joinRoom(this.roomCode, cleanUserName).subscribe({
-      next: (response) => {        if (response.success && response.data && response.data.room) {
+      next: (response) => {
+        if (response.success && response.data && response.data.room) {
           const userId = response.data.user.id;
-          
+
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
           this.roomStateService.setInRoom(true);
-          
+
           SecureStorageService.storeUserSession(userId, this.roomCode);
 
           this.router.navigate(['/room', this.roomCode]);
@@ -96,6 +98,7 @@ export class JoinRoomComponent implements OnInit {
       }
     });
   }
+
   goToLanding() {
     this.router.navigate(['/']);
   }

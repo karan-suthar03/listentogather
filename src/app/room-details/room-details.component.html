@@ -20,13 +20,14 @@
         </h6>
         <ul class="list-group list-group-flush user-list-minimal-v2">
           <li *ngFor="let user of users; trackBy: trackByUserId"
-              class="list-group-item d-flex justify-content-between align-items-center">            <div class="d-flex align-items-center">
-              <span 
-                [class.connected]="user.isConnected !== false" 
+              class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <span
+                [class.connected]="user.isConnected !== false"
                 [class.disconnected]="user.isConnected === false"
-                class="connection-status me-2" 
-                [title]="user.isConnected === false ? 'Disconnected (removing soon)' : 'Connected'">●</span>
-              <span class="user-name" [class.text-muted]="user.isConnected === false">{{ user.name }}</span>
+                [title]="user.isConnected === false ? 'Disconnected (removing soon)' : 'Connected'"
+                class="connection-status me-2">●</span>
+              <span [class.text-muted]="user.isConnected === false" class="user-name">{{ user.name }}</span>
               <span *ngIf="user.isHost" class="badge bg-primary ms-2">HOST</span>
               <span *ngIf="user.isConnected === false" class="badge bg-warning ms-2 text-dark">DISCONNECTED</span>
             </div>
