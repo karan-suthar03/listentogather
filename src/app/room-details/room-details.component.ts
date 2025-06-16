@@ -31,7 +31,9 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
 
   queueItems: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  private subscriptions: Subscription[] = [];  constructor(
+  private subscriptions: Subscription[] = [];
+
+  constructor(
     private roomService: RoomService,
     private socketService: SocketService,
     private roomStateService: RoomStateService,
@@ -337,6 +339,7 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(errorSub);
   }
+
   private handleRoomDeleted(message: string): void {
     console.log('🏠 Handling room deletion, redirecting to landing page');
 

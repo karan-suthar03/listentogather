@@ -31,6 +31,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   private startCenterWidth = 0;
   private startRightWidth = 0;
   private subscriptions: Subscription[] = [];
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -250,7 +251,9 @@ export class RoomComponent implements OnInit, OnDestroy {
       }
     });
     this.subscriptions.push(disconnectSub);
-  }  private setupHttpErrorHandling(): void {
+  }
+
+  private setupHttpErrorHandling(): void {
     // This method can be extended to handle HTTP errors globally
     // For now, the individual API calls in validateRoomExists already handle 404 errors
     console.log('📡 HTTP error handling setup complete');
@@ -258,7 +261,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   private validateRoomStillExists(): void {
     if (!this.roomCode) return;
-    
+
     this.roomService.getRoomDetails(this.roomCode).subscribe({
       next: (response) => {
         if (!response.success || !response.data) {
@@ -272,27 +275,28 @@ export class RoomComponent implements OnInit, OnDestroy {
       }
     });
   }
+
   private handleRoomDeleted(message: string): void {
     console.log('🏠 Handling room deletion, redirecting to landing page');
-    
+
     // Stop music playback immediately
     this.musicService.destroy();
-    
+
     // Clear room state
     this.roomStateService.setRoom(null);
     this.roomStateService.setUser(null);
     this.roomStateService.setInRoom(false);
-    
+
     // Clear local storage
     try {
       SecureStorageService.clearUserSession();
     } catch (error) {
       console.error('Error clearing user session:', error);
     }
-    
+
     // Disconnect socket
     this.socketService.disconnect();
-    
+
     // Show notification and redirect
     this.redirectToLandingWithError(message);
   }
