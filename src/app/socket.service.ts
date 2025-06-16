@@ -1,14 +1,33 @@
-import {Injectable} from '@angular/core';
+import {Injectable, OnDestroy} from '@angular/core';
 import io from 'socket.io-client';
-import {Observable} from 'rxjs';
+import {Observable, Subject} from 'rxjs';
 import {MusicSyncData, Room, User} from './models/room.model';
 import {ConfigService} from './config.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class SocketService {
+export class SocketService implements OnDestroy {
   private socket: any;
+    // Shared subjects for all socket events
+  private roomUpdate$ = new Subject<Room>();
+  private userJoined$ = new Subject<{ user: User, room: Room }>();
+  private userLeft$ = new Subject<{ user: User, room: Room }>();
+  private userDisconnected$ = new Subject<{ userId: string, user: User, room: Room }>();
+  private userReconnected$ = new Subject<{ userId: string, user: User, room: Room }>();
+  private participantList$ = new Subject<User[]>();
+  private musicState$ = new Subject<MusicSyncData>();
+  private error$ = new Subject<{ message: string }>();
+  private queueItemProgress$ = new Subject<{ queueItemId: string, progress: number, status: string }>();
+  private queueItemComplete$ = new Subject<{ queueItemId: string, mp3Url: string, status: string }>();
+  private queueItemError$ = new Subject<{ queueItemId: string, error: string, status: string }>();
+  private queueUpdated$ = new Subject<{ queue: any[], currentTrackIndex: number }>();
+  private roomWorkingStateChanged$ = new Subject<{ isWorking: boolean, workingMessage: string }>();
+  private roomDeleted$ = new Subject<{ roomCode: string, reason: string, message: string }>();
+  private forceDisconnect$ = new Subject<{ reason: string, message: string }>();
+  private socketDisconnect$ = new Subject<string>();
+  private socketConnect$ = new Subject<void>();
+  private hostChanged$ = new Subject<{ newHost: User, previousHost?: User, reason: string, room: Room }>();
 
   constructor(private configService: ConfigService) {
     this.socket = io(this.configService.socketUrl, {
@@ -16,6 +35,81 @@ export class SocketService {
       forceNew: true,
       reconnection: true,
       timeout: 5000
+    });
+    
+    this.setupSocketListeners();
+  }
+
+  private setupSocketListeners(): void {
+    // Set up all socket listeners ONCE
+    this.socket.on('room-updated', (room: Room) => {
+      this.roomUpdate$.next(room);
+    });
+
+    this.socket.on('user-joined', (data: { user: User, room: Room }) => {
+      this.userJoined$.next(data);
+    });
+
+    this.socket.on('user-left', (data: { user: User, room: Room }) => {
+      this.userLeft$.next(data);
+    });
+
+    this.socket.on('user-disconnected', (data: { userId: string, user: User, room: Room }) => {
+      this.userDisconnected$.next(data);
+    });
+
+    this.socket.on('user-reconnected', (data: { userId: string, user: User, room: Room }) => {
+      this.userReconnected$.next(data);
+    });
+
+    this.socket.on('participant-list', (participants: User[]) => {
+      this.participantList$.next(participants);
+    });
+
+    this.socket.on('music-state', (syncData: MusicSyncData) => {
+      this.musicState$.next(syncData);
+    });
+
+    this.socket.on('error', (error: { message: string }) => {
+      this.error$.next(error);
+    });
+
+    this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
+      this.queueItemProgress$.next(data);
+    });
+
+    this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
+      this.queueItemComplete$.next(data);
+    });
+
+    this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
+      this.queueItemError$.next(data);
+    });
+
+    this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
+      this.queueUpdated$.next(data);
+    });
+
+    this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {
+      this.roomWorkingStateChanged$.next(data);
+    });
+
+    this.socket.on('room-deleted', (data: { roomCode: string, reason: string, message: string }) => {
+      this.roomDeleted$.next(data);
+    });
+
+    this.socket.on('force-disconnect', (data: { reason: string, message: string }) => {
+      this.forceDisconnect$.next(data);
+    });
+
+    this.socket.on('disconnect', (reason: string) => {
+      this.socketDisconnect$.next(reason);
+    });    this.socket.on('connect', () => {
+      this.socketConnect$.next();
+    });
+
+    this.socket.on('host-changed', (data: { newHost: User, previousHost?: User, reason: string, room: Room }) => {
+      this.hostChanged$.next(data);
     });
   }
 
@@ -26,53 +120,29 @@ export class SocketService {
   leaveRoom(roomCode: string): void {
     this.socket.emit('leave-room', {roomCode});
   }
-
+  // Observable getters - return shared observables instead of creating new ones
   onRoomUpdate(): Observable<Room> {
-    return new Observable(observer => {
-      this.socket.on('room-updated', (room: Room) => {
-        observer.next(room);
-      });
-    });
+    return this.roomUpdate$.asObservable();
   }
 
   onUserJoined(): Observable<{ user: User, room: Room }> {
-    return new Observable(observer => {
-      this.socket.on('user-joined', (data: { user: User, room: Room }) => {
-        observer.next(data);
-      });
-    });
+    return this.userJoined$.asObservable();
   }
 
   onUserLeft(): Observable<{ user: User, room: Room }> {
-    return new Observable(observer => {
-      this.socket.on('user-left', (data: { user: User, room: Room }) => {
-        observer.next(data);
-      });
-    });
+    return this.userLeft$.asObservable();
   }
 
   onUserDisconnected(): Observable<{ userId: string, user: User, room: Room }> {
-    return new Observable(observer => {
-      this.socket.on('user-disconnected', (data: { userId: string, user: User, room: Room }) => {
-        observer.next(data);
-      });
-    });
+    return this.userDisconnected$.asObservable();
   }
 
   onUserReconnected(): Observable<{ userId: string, user: User, room: Room }> {
-    return new Observable(observer => {
-      this.socket.on('user-reconnected', (data: { userId: string, user: User, room: Room }) => {
-        observer.next(data);
-      });
-    });
+    return this.userReconnected$.asObservable();
   }
 
   onParticipantList(): Observable<User[]> {
-    return new Observable(observer => {
-      this.socket.on('participant-list', (participants: User[]) => {
-        observer.next(participants);
-      });
-    });
+    return this.participantList$.asObservable();
   }
 
   getParticipants(roomCode: string): void {
@@ -80,19 +150,11 @@ export class SocketService {
   }
 
   onMusicState(): Observable<MusicSyncData> {
-    return new Observable(observer => {
-      this.socket.on('music-state', (syncData: MusicSyncData) => {
-        observer.next(syncData);
-      });
-    });
+    return this.musicState$.asObservable();
   }
 
   onError(): Observable<{ message: string }> {
-    return new Observable(observer => {
-      this.socket.on('error', (error: { message: string }) => {
-        observer.next(error);
-      });
-    });
+    return this.error$.asObservable();
   }
 
   playMusic(roomCode: string, userId: string): void {
@@ -181,76 +243,74 @@ export class SocketService {
   isConnected(): boolean {
     return this.socket.connected;
   }
-
   onQueueItemProgress(): Observable<{ queueItemId: string, progress: number, status: string }> {
-    return new Observable(observer => {
-      this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.queueItemProgress$.asObservable();
   }
 
   onQueueItemComplete(): Observable<{ queueItemId: string, mp3Url: string, status: string }> {
-    return new Observable(observer => {
-      this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.queueItemComplete$.asObservable();
   }
 
   onQueueItemError(): Observable<{ queueItemId: string, error: string, status: string }> {
-    return new Observable(observer => {
-      this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.queueItemError$.asObservable();
   }
 
   onQueueUpdated(): Observable<{ queue: any[], currentTrackIndex: number }> {
-    return new Observable(observer => {
-      this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
-        observer.next(data);
-      });
-    });
+    return this.queueUpdated$.asObservable();
   }
 
   onRoomWorkingStateChanged(): Observable<{ isWorking: boolean, workingMessage: string }> {
-    return new Observable(observer => {
-      this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.roomWorkingStateChanged$.asObservable();
   }
 
   onRoomDeleted(): Observable<{ roomCode: string, reason: string, message: string }> {
-    return new Observable(observer => {
-      this.socket.on('room-deleted', (data: { roomCode: string, reason: string, message: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.roomDeleted$.asObservable();
   }
 
   onForceDisconnect(): Observable<{ reason: string, message: string }> {
-    return new Observable(observer => {
-      this.socket.on('force-disconnect', (data: { reason: string, message: string }) => {
-        observer.next(data);
-      });
-    });
+    return this.forceDisconnect$.asObservable();
   }
 
   onSocketDisconnect(): Observable<string> {
-    return new Observable(observer => {
-      this.socket.on('disconnect', (reason: string) => {
-        observer.next(reason);
-      });
-    });
+    return this.socketDisconnect$.asObservable();
   }
 
   onSocketConnect(): Observable<void> {
-    return new Observable(observer => {
-      this.socket.on('connect', () => {
-        observer.next();
-      });
-    });
+    return this.socketConnect$.asObservable();
+  }
+
+  onHostChanged(): Observable<{ newHost: User, previousHost?: User, reason: string, room: Room }> {
+    return this.hostChanged$.asObservable();
+  }
+
+  // Host management methods
+  transferHost(roomCode: string, newHostId: string): void {
+    this.socket.emit('transfer-host', { roomCode, newHostId });
+  }
+
+  ngOnDestroy(): void {
+    // Complete and clean up all subjects
+    this.roomUpdate$.complete();
+    this.userJoined$.complete();
+    this.userLeft$.complete();
+    this.userDisconnected$.complete();
+    this.userReconnected$.complete();
+    this.participantList$.complete();
+    this.musicState$.complete();
+    this.error$.complete();
+    this.queueItemProgress$.complete();
+    this.queueItemComplete$.complete();
+    this.queueItemError$.complete();
+    this.queueUpdated$.complete();    this.roomWorkingStateChanged$.complete();
+    this.roomDeleted$.complete();
+    this.forceDisconnect$.complete();
+    this.socketDisconnect$.complete();
+    this.socketConnect$.complete();
+    this.hostChanged$.complete();
+
+    // Disconnect socket
+    if (this.socket) {
+      this.socket.disconnect();
+    }
   }
 }

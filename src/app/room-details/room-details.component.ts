@@ -336,8 +336,39 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       if (error.message.includes('Room not found') || error.message.includes('room not found')) {
         this.handleRoomDeleted('Room not found or has been deleted');
       }
+    });    this.subscriptions.push(errorSub);
+
+    const hostChangedSub = this.socketService.onHostChanged().subscribe((data) => {
+      console.log('👑 Host changed:', data);
+      
+      // Show notification about host change
+      let message = '';
+      switch (data.reason) {
+        case 'host-left':
+          message = `${data.newHost.name} is now the host (previous host left)`;
+          break;
+        case 'first-user-in-empty-room':
+          message = `${data.newHost.name} joined as the host`;
+          break;
+        case 'manual-transfer':
+          message = `Host transferred to ${data.newHost.name}`;
+          break;
+        default:
+          message = `${data.newHost.name} is now the host`;
+      }
+      
+      this.notificationService.show(message, 'info');
+      
+      // Update local user's host status if needed
+      if (this.user && this.user.id === data.newHost.id) {
+        this.user.isHost = true;
+        this.roomStateService.setUser(this.user);
+      } else if (this.user && data.previousHost && this.user.id === data.previousHost.id) {
+        this.user.isHost = false;
+        this.roomStateService.setUser(this.user);
+      }
     });
-    this.subscriptions.push(errorSub);
+    this.subscriptions.push(hostChangedSub);
   }
 
   private handleRoomDeleted(message: string): void {
