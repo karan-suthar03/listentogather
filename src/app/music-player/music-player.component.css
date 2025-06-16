@@ -478,3 +478,62 @@
     display: none;
   }
 }
+
+/* Sync Status */
+.sync-status {
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  border: none;
+  background: rgba(13, 202, 240, 0.15);
+  color: #0dcaf0;
+  border: 1px solid rgba(13, 202, 240, 0.3);
+}
+
+.sync-status lucide-icon {
+  opacity: 0.8;
+}
+
+.sync-status .spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Autoplay Prompt */
+.autoplay-prompt {
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  border: none;
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.autoplay-prompt .btn {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #ffc107;
+  transition: all 0.2s ease;
+}
+
+.autoplay-prompt .btn:hover {
+  background: rgba(255, 193, 7, 0.3);
+  border-color: rgba(255, 193, 7, 0.5);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.autoplay-prompt .btn:active {
+  transform: translateY(0);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

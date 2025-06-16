@@ -37,6 +37,7 @@ export interface MusicSyncData {
   isPlaying: boolean;
   currentTime: number;
   lastUpdated: number;
+  serverTimestamp?: number;
   metadata?: MusicMetadata;
   queue?: QueueItem[];
   currentTrackIndex?: number;

@@ -32,6 +32,26 @@
       <div class="col-lg-6 col-md-4 col-12 order-md-2 order-3">
         <div class="controls-section">
 
+          <!-- Sync status indicator - only show when no initial sync received -->
+          <div *ngIf="!isInSync() && isInRoom" class="sync-status alert alert-info text-center py-1 mb-2">
+            <small>
+              <lucide-icon name="loader-2" size="14" class="me-1 spin"></lucide-icon>
+              Loading music state...
+            </small>
+          </div>
+
+          <!-- Autoplay blocked prompt - only show when autoplay is actually blocked -->
+          <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="autoplay-prompt alert alert-warning text-center py-2 mb-2">
+            <div class="d-flex align-items-center justify-content-center">
+              <lucide-icon name="volume-x" size="16" class="me-2"></lucide-icon>
+              <span class="me-3">Click to resume playback</span>
+              <button (click)="onResumePlayback()" class="btn btn-sm btn-warning">
+                <lucide-icon name="play" size="14" class="me-1"></lucide-icon>
+                Resume
+              </button>
+            </div>
+          </div>
+
           <!-- Playback buttons -->
           <div class="playback-controls">
             <button [disabled]="!currentUser" class="control-btn shuffle-btn" title="Shuffle (Not implemented)">

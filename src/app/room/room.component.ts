@@ -208,13 +208,21 @@ export class RoomComponent implements OnInit, OnDestroy {
     }
 
     return null;
-  }
-
-  private ensureSocketConnection(): void {
+  }  private ensureSocketConnection(): void {
     const currentUser = this.roomStateService.getUser();
     if (currentUser && this.roomCode) {
       this.socketService.joinRoom(this.roomCode, currentUser);
       this.socketService.getParticipants(this.roomCode);
+      
+      // Request initial music sync immediately and then again after a delay
+      // This ensures we get sync even if the first request fails or is missed
+      console.log('🎵 Requesting immediate music sync after joining room...');
+      this.socketService.requestSync(this.roomCode);
+      
+      setTimeout(() => {
+        console.log('🎵 Requesting backup music sync...');
+        this.socketService.requestSync(this.roomCode);
+      }, 1000);
     }
   }
 
@@ -231,16 +239,19 @@ export class RoomComponent implements OnInit, OnDestroy {
       console.log('🚪 Force disconnect:', data);
       this.handleRoomDeleted(data.message || 'You have been disconnected from the room');
     });
-    this.subscriptions.push(forceDisconnectSub);
-
-    // Listen for socket errors that might indicate room issues
+    this.subscriptions.push(forceDisconnectSub);    // Listen for socket errors that might indicate room issues
     const errorSub = this.socketService.onError().subscribe((error) => {
       console.log('❌ Socket error:', error);
       if (error.message.includes('Room not found') || error.message.includes('room not found')) {
         this.handleRoomDeleted('Room not found or has been deleted');
+      } else if (error.message.includes('User not in room')) {
+        // Redirect to landing page when user is not in room
+        this.router.navigate(['/']);
       }
     });
-    this.subscriptions.push(errorSub);    // Also listen for when socket disconnects unexpectedly (room might have been deleted)
+    this.subscriptions.push(errorSub);
+
+    // Also listen for when socket disconnects unexpectedly (room might have been deleted)
     const disconnectSub = this.socketService.onSocketDisconnect().subscribe((reason: string) => {
       console.log('🔌 Socket disconnected:', reason);
       if (this.roomCode && !this.isLoading) {

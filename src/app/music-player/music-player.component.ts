@@ -28,6 +28,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
 
+  // Sync state tracking
+  private lastSyncTime: number = 0;
+  private syncTimeThreshold: number = 60000; // 1 minute instead of 5 seconds
+  private isInitialSyncReceived: boolean = false;
+
   // Drag state for sliders
   isDraggingProgress: boolean = false;
   isDraggingVolume: boolean = false;
@@ -46,6 +51,9 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   private lastProgressUpdate: number = 0;
   private progressUpdateThrottle: number = 100; // 100ms between updates
 
+  // Add autoplay blocked state
+  autoplayBlocked: boolean = false;
+
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -61,6 +69,8 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.setupMusicListeners();
     // Set initial volume to 100%
     this.musicService.setVolume(this.volume);
+    
+    // Remove periodic sync - only sync when necessary
   }
 
   ngOnDestroy(): void {
@@ -87,6 +97,23 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   togglePlay(): void {
     if (!this.currentUser || !this.roomCode) {
+      return;
+    }
+
+    // Only check sync for critical operations and if we haven't synced in a very long time
+    if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 300000) { // 5 minutes
+      console.log('🎵 User not synced recently, requesting sync before control');
+      this.socketService.requestSync(this.roomCode);
+      // Allow the operation to continue after requesting sync
+      setTimeout(() => {
+        if (this.currentUser && this.roomCode) {
+          if (this.isPlaying) {
+            this.socketService.pauseMusic(this.roomCode, this.currentUser.id);
+          } else {
+            this.socketService.playMusic(this.roomCode, this.currentUser.id);
+          }
+        }
+      }, 500);
       return;
     }
 
@@ -197,6 +224,35 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Check if user is in sync with the room's music state
+  isInSync(): boolean {
+    // Only show out of sync if we haven't received ANY sync data yet
+    return this.isInitialSyncReceived;
+  }
+
+  // Debug method to check sync state
+  checkSyncState(): void {
+    console.log('🎵 Sync State Debug:', {
+      isInitialSyncReceived: this.isInitialSyncReceived,
+      lastSyncTime: new Date(this.lastSyncTime).toLocaleTimeString(),
+      timeSinceLastSync: Date.now() - this.lastSyncTime,
+      isInRoom: this.isInRoom,
+      roomCode: this.roomCode,
+      currentUser: this.currentUser?.name,
+      currentTrack: this.currentTrack?.title,
+      isPlaying: this.isPlaying,
+      currentTime: this.currentTime
+    });
+  }
+
+  // Manual sync trigger for debugging
+  manualSync(): void {
+    if (this.roomCode) {
+      console.log('🎵 Manual sync triggered');
+      this.socketService.requestSync(this.roomCode);
+    }
+  }
+
   formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -224,45 +280,91 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
     const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
       this.isInRoom = inRoom;
+      
+      // When we join a room, immediately request sync to restore playback state
+      if (inRoom && this.roomCode) {
+        setTimeout(() => {
+          if (this.roomCode) {
+            this.socketService.requestSync(this.roomCode);
+          }
+        }, 100); // Very short delay
+      }
     });
     this.subscriptions.push(inRoomSub);
+
+    // Subscribe to autoplay blocked state
+    this.subscriptions.push(
+      this.musicService.autoplayBlocked$.subscribe(blocked => {
+        this.autoplayBlocked = blocked;
+      })
+    );
   }
 
   private setupMusicListeners(): void {
-    const queueSub = this.queueService.queue$.subscribe(queueData => {
-      this.queue = queueData.queue;
-      this.currentTrackIndex = queueData.currentTrackIndex;
+    // Subscribe to current track changes
+    this.subscriptions.push(
+      this.musicService.getCurrentTrack().subscribe(track => {
+        this.currentTrack = track;
+        this.duration = this.musicService.getDuration();
+      })
+    );
 
-      if (queueData.currentTrackIndex >= 0 && queueData.queue.length > queueData.currentTrackIndex) {
-        this.currentTrack = queueData.queue[queueData.currentTrackIndex];
-        this.duration = this.currentTrack.duration || 0;
-      } else {
-        this.currentTrack = null;
-        this.duration = 0;
-      }
-    });
-    this.subscriptions.push(queueSub);
-
-    const playbackSub = this.musicService.getPlaybackState().subscribe(state => {
-      this.isPlaying = state.isPlaying;
-      // Only update currentTime if we're not currently dragging the progress slider
-      if (!this.isDraggingProgress) {
+    // Subscribe to playback state changes
+    this.subscriptions.push(
+      this.musicService.getPlaybackState().subscribe(state => {
+        this.isPlaying = state.isPlaying;
+        // Always update current time from the music service, don't skip during dragging
+        // The dragging logic should be handled in the UI layer
         this.currentTime = state.currentTime;
-      }
-    });
-    this.subscriptions.push(playbackSub);
+        
+        // Update duration when it becomes available
+        const newDuration = this.musicService.getDuration();
+        if (newDuration && newDuration > 0) {
+          this.duration = newDuration;
+        }
+      })
+    );
 
-    // Listen to socket events
-    const musicStateSub = this.socketService.onMusicState().subscribe(syncData => {
-      this.musicService.syncWithState(syncData);
-    });
-    this.subscriptions.push(musicStateSub);
+    // Subscribe to music sync events
+    this.subscriptions.push(
+      this.socketService.onMusicState().subscribe(syncData => {
+        // Update sync tracking
+        this.lastSyncTime = Date.now();
+        this.isInitialSyncReceived = true;
+        
+        this.musicService.syncWithState(syncData);
+      })
+    );
 
-    const errorSub = this.socketService.onError().subscribe(error => {
-      console.error('Music control error:', error.message);
-      alert(error.message);
-    });
-    this.subscriptions.push(errorSub);
+    // Subscribe to queue updates
+    this.subscriptions.push(
+      this.queueService.queue$.subscribe(queueData => {
+        this.queue = queueData.queue;
+        this.currentTrackIndex = queueData.currentTrackIndex;
+      })
+    );
+
+    // Subscribe to socket reconnection events to request sync
+    this.subscriptions.push(
+      this.socketService.onSocketConnect().subscribe(() => {
+        console.log('🎵 Socket reconnected - requesting sync');
+        // Always request sync on reconnection to ensure state is restored
+        setTimeout(() => {
+          if (this.roomCode) {
+            console.log('🎵 Requesting sync after socket reconnection...');
+            this.socketService.requestSync(this.roomCode);
+          }
+        }, 500); // Shorter delay for immediate sync
+      })
+    );
+
+    // Subscribe to autoplay blocked state
+    this.subscriptions.push(
+      this.musicService.autoplayBlocked$.subscribe(blocked => {
+        this.autoplayBlocked = blocked;
+        console.log('🎵 Autoplay blocked state:', blocked);
+      })
+    );
   }  // Progress bar drag functionality
   onProgressMouseDown(event: MouseEvent): void {
     if (!this.currentUser || !this.roomCode || this.duration <= 0) {
@@ -406,5 +508,13 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.volume = percentage;
     this.isMuted = false;
     this.musicService.setVolume(percentage);
+  }
+
+  // Method to handle autoplay prompt interaction
+  async onResumePlayback() {
+    const success = await this.musicService.resumePlayback();
+    if (!success) {
+      console.log('Failed to resume playback after user interaction');
+    }
   }
 }

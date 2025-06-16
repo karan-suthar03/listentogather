@@ -329,14 +329,15 @@ export class RoomDetailsComponent implements OnInit, OnDestroy {
       console.log('🚪 Force disconnect:', data);
       this.handleRoomDeleted(data.message || 'You have been disconnected from the room');
     });
-    this.subscriptions.push(forceDisconnectSub);
-
-    const errorSub = this.socketService.onError().subscribe((error) => {
+    this.subscriptions.push(forceDisconnectSub);    const errorSub = this.socketService.onError().subscribe((error) => {
       console.log('❌ Socket error:', error);
       if (error.message.includes('Room not found') || error.message.includes('room not found')) {
         this.handleRoomDeleted('Room not found or has been deleted');
+      } else if (error.message.includes('User not in room')) {
+        // Redirect to landing page when user is not in room
+        this.router.navigate(['/']);
       }
-    });    this.subscriptions.push(errorSub);
+    });this.subscriptions.push(errorSub);
 
     const hostChangedSub = this.socketService.onHostChanged().subscribe((data) => {
       console.log('👑 Host changed:', data);

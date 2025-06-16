@@ -102,10 +102,15 @@ export class SocketService implements OnDestroy {
       this.forceDisconnect$.next(data);
     });
 
-    this.socket.on('disconnect', (reason: string) => {
-      this.socketDisconnect$.next(reason);
-    });    this.socket.on('connect', () => {
+    // Handle socket connection events for better sync
+    this.socket.on('connect', () => {
+      console.log('🔌 Socket connected');
       this.socketConnect$.next();
+    });
+
+    this.socket.on('disconnect', (reason: string) => {
+      console.log('🔌 Socket disconnected:', reason);
+      this.socketDisconnect$.next(reason);
     });
 
     this.socket.on('host-changed', (data: { newHost: User, previousHost?: User, reason: string, room: Room }) => {
