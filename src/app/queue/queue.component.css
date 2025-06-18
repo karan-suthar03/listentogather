@@ -243,17 +243,19 @@
   color: #10b981;
 }
 
+/* Download Status Styles */
 .download-status {
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 0.75rem;
 }
 
 .status-pending {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #eab308;
+  color: #f59e0b;
 }
 
 .status-downloading {
@@ -261,10 +263,6 @@
   align-items: center;
   gap: 4px;
   color: #3b82f6;
-}
-
-.status-downloading lucide-icon {
-  animation: pulse 2s infinite;
 }
 
 .status-completed {
@@ -282,29 +280,28 @@
 }
 
 .error-icon {
-  width: 12px;
-  height: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: bold;
 }
 
+/* Progress Bar Styles */
 .progress-bar-container {
   margin-top: 4px;
+  width: 100%;
 }
 
 .progress-bar {
   width: 100%;
-  height: 4px;
-  background: rgba(31, 41, 55, 1);
-  border-radius: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #3b82f6;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
   transition: width 0.3s ease;
+  border-radius: 1px;
 }
 
 .track-actions {

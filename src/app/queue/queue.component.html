@@ -70,20 +70,24 @@
             <div class="track-meta">
               <span class="artist">{{ item.artist }}</span>
               <span class="separator">•</span>
-              <span class="added-by">by {{ item.addedBy }}</span>
-
-              <!-- Download Status -->
-              <ng-container *ngIf="item.downloadStatus && item.downloadStatus !== 'completed'">
-                <span class="separator">•</span>
-                <div [ngSwitch]="item.downloadStatus" class="download-status">
+              <span class="added-by">by {{ item.addedBy }}</span>              <!-- Download Status -->
+              <ng-container *ngIf="item.downloadStatus">
+                <span class="separator">•</span>                <div [ngSwitch]="item.downloadStatus" class="download-status">
                   <div *ngSwitchCase="'pending'" class="status-pending">
                     <lucide-icon name="clock" size="12"></lucide-icon>
                     <span>Queued</span>
                   </div>
+                  
                   <div *ngSwitchCase="'downloading'" class="status-downloading">
-                    <lucide-icon name="download" size="12"></lucide-icon>
-                    <span>{{ item.downloadProgress ? getMathRound(item.downloadProgress) + '%' : 'Downloading' }}</span>
+                    <lucide-icon [name]="getDownloadIcon(item)" size="12"></lucide-icon>
+                    <span>{{ getDownloadStatusText(item) }}</span>
                   </div>
+                  
+                  <div *ngSwitchCase="'uploading'" class="status-downloading">
+                    <lucide-icon [name]="getDownloadIcon(item)" size="12"></lucide-icon>
+                    <span>{{ getDownloadStatusText(item) }}</span>
+                  </div>
+                  
                   <div *ngSwitchCase="'completed'" class="status-completed">
                     <lucide-icon name="check-circle" size="12"></lucide-icon>
                     <span>Ready</span>

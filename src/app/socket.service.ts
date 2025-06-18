@@ -44,8 +44,8 @@ export class SocketService implements OnDestroy {
 
     this.setupSocketListeners();
   }
-
   joinRoom(roomCode: string, user: User): void {
+    console.log(`🔌 Joining room: ${roomCode} as user:`, user);
     this.socket.emit('join-room', {roomCode, user});
   }
 
@@ -299,21 +299,18 @@ export class SocketService implements OnDestroy {
 
     this.socket.on('participant-list', (participants: User[]) => {
       this.participantList$.next(participants);
-    });
-
-    this.socket.on('music-state', (syncData: MusicSyncData) => {
+    });    this.socket.on('music-state', (syncData: MusicSyncData) => {
+      console.log('📡 Received music-state:', syncData);
       this.musicState$.next(syncData);
     });
 
     this.socket.on('error', (error: { message: string }) => {
       this.error$.next(error);
-    });
-
-    this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
+    });    this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
+      console.log('📡 Received queueItemProgress:', data);
       this.queueItemProgress$.next(data);
-    });
-
-    this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
+    });    this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
+      console.log('📡 Received queueItemComplete:', data);
       this.queueItemComplete$.next(data);
     });
 

@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import {Component, EventEmitter, Input, OnInit, OnChanges, Output} from '@angular/core';
 import {QueueItem} from '../queue.service';
 
 @Component({
@@ -6,7 +6,7 @@ import {QueueItem} from '../queue.service';
   templateUrl: './queue.component.html',
   styleUrls: ['./queue.component.css']
 })
-export class QueueComponent implements OnInit {
+export class QueueComponent implements OnInit, OnChanges {
   @Input() queue: QueueItem[] = [];
   @Input() currentlyPlayingId?: number | string;
   @Input() isMobile: boolean = false;
@@ -17,6 +17,21 @@ export class QueueComponent implements OnInit {
   actionStates: { [key: string]: string } = {};
 
   ngOnInit() {
+    console.log('🎵 Queue component initialized with items:', this.queue.map(item => ({
+      id: item.id,
+      title: item.title,
+      downloadStatus: item.downloadStatus,
+      downloadProgress: item.downloadProgress
+    })));
+  }
+
+  ngOnChanges() {
+    console.log('🔄 Queue component data changed:', this.queue.map(item => ({
+      id: item.id,
+      title: item.title,
+      downloadStatus: item.downloadStatus,
+      downloadProgress: item.downloadProgress
+    })));
   }
 
   trackByQueueId(index: number, item: QueueItem): string | number {
@@ -88,5 +103,31 @@ export class QueueComponent implements OnInit {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  getDownloadStatusText(item: QueueItem): string {
+    if (!item.downloadProgress) {
+      return 'Preparing...';
+    }
+
+    const progress = Math.round(item.downloadProgress);
+    if (progress <= 50) {
+      return `Downloading ${progress}%`;
+    } else {
+      return `Uploading ${progress}%`;
+    }
+  }
+
+  getDownloadIcon(item: QueueItem): string {
+    if (!item.downloadProgress) {
+      return 'clock';
+    }
+
+    const progress = Math.round(item.downloadProgress);
+    if (progress <= 50) {
+      return 'download';
+    } else {
+      return 'upload';
+    }
   }
 }

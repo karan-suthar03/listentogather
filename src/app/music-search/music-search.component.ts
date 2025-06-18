@@ -12,7 +12,7 @@ export interface SearchResult {
   title: string;
   artist: string;
   album: string;
-  duration: string;
+  duration: string | { seconds: number; timestamp: string };
   thumbnail?: string;
   url?: string;
   videoId?: string;
@@ -91,7 +91,6 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       this.performSearch(this.query);
     }
   }
-
   async handleSongAdd(result: SearchResult): Promise<void> {
     if (this.addedSongs.has(result.id) || this.addingSongs.has(result.id)) {
       return;
@@ -101,9 +100,12 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     try {
       const roomCode = this.roomStateService.getRoomCode();
       const currentUser = this.roomStateService.getUser();
-      const addedBy = currentUser?.name || 'You';
+      const addedBy = currentUser?.name || 'You';      // Always use add-from-search endpoint for YouTube videos since we have all the data
+      if (result.videoId) {
+        const durationSeconds = typeof result.duration === 'object' && result.duration.seconds 
+          ? result.duration.seconds 
+          : this.parseDurationToSeconds(result.duration as string);
 
-      if (result.videoId && this.inputType === 'search') {
         const searchResultData = {
           videoId: result.videoId,
           title: result.title,
@@ -111,7 +113,7 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
             name: result.artist
           },
           duration: {
-            seconds: this.parseDurationToSeconds(result.duration)
+            seconds: durationSeconds
           },
           thumbnail: result.thumbnail,
           url: result.url || `https://youtube.com/watch?v=${result.videoId}`
@@ -120,13 +122,17 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
         await this.http.post(`${this.configService.apiUrl}/api/queue/${roomCode}/add-from-search`, {
           searchResult: searchResultData,
           addedBy: addedBy
-        }).toPromise();
-      } else {
+        }).toPromise();      } else {
+        // Fallback for non-YouTube results (Spotify, etc.)
+        const durationSeconds = typeof result.duration === 'object' && result.duration.seconds 
+          ? result.duration.seconds 
+          : this.parseDurationToSeconds(result.duration as string);
+
         await this.queueService.addToQueue(roomCode, {
           id: result.id,
           title: result.title,
           artist: result.artist,
-          duration: this.parseDurationToSeconds(result.duration),
+          duration: durationSeconds,
           url: result.url || '',
           videoId: result.videoId || '',
           spotifyId: result.spotifyId || '',
@@ -174,21 +180,14 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     } else {
       this.inputType = 'search';
     }
-  }
-
-  private async performSearch(query: string): Promise<void> {
+  }  private async performSearch(query: string): Promise<void> {
     this.isSearching = true;
 
     try {
       let searchResults: SearchResult[] = [];
 
-      if (this.inputType === 'spotify') {
-        searchResults = await this.searchSpotify(query);
-      } else if (this.inputType === 'youtube') {
-        searchResults = await this.searchYoutube(query);
-      } else {
-        searchResults = await this.searchGeneral(query);
-      }
+      // Use the same search endpoint for all searches (YouTube URLs, Spotify URLs, and text queries)
+      searchResults = await this.searchGeneral(query);
 
       this.results = searchResults;
     } catch (error) {
@@ -197,19 +196,7 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     } finally {
       this.isSearching = false;
     }
-  }
-
-  private async searchSpotify(url: string): Promise<SearchResult[]> {
-    const response = await this.http.post<any>(`${this.configService.apiUrl}/api/music/search/spotify`, {url}).toPromise();
-    return this.mapToSearchResults(response.tracks || [response], 'spotify');
-  }
-
-  private async searchYoutube(url: string): Promise<SearchResult[]> {
-    const response = await this.http.post<any>(`${this.configService.apiUrl}/api/music/search/youtube`, {url}).toPromise();
-    return this.mapToSearchResults([response], 'youtube');
-  }
-
-  private async searchGeneral(query: string): Promise<SearchResult[]> {
+  }  private async searchGeneral(query: string): Promise<SearchResult[]> {
     const response = await this.http.get<any>(`${this.configService.apiUrl}/api/search/youtube?q=${encodeURIComponent(query)}&limit=10`).toPromise();
     if (response.success && response.data && response.data.results) {
       return this.mapYouTubeToSearchResults(response.data.results);
