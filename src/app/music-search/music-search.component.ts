@@ -89,7 +89,6 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       this.performSearch(this.query);
     }
   }
-
   async handleSongAdd(result: SearchResult): Promise<void> {
     if (this.addedSongs.has(result.id) || this.addingSongs.has(result.id)) {
       return;
@@ -101,16 +100,39 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       const currentUser = this.roomStateService.getUser();
       const addedBy = currentUser?.name || 'You';
 
-      await this.queueService.addToQueue(roomCode, {
-        id: result.id,
-        title: result.title,
-        artist: result.artist,
-        duration: this.parseDurationToSeconds(result.duration),
-        url: result.url || '',
-        videoId: result.videoId || '',
-        spotifyId: result.spotifyId || '',
-        thumbnail: result.thumbnail
-      }, addedBy).toPromise();
+      // Check if this is a search result (has videoId from YouTube search)
+      if (result.videoId && this.inputType === 'search') {
+        // Use the new endpoint for search results
+        const searchResultData = {
+          videoId: result.videoId,
+          title: result.title,
+          author: {
+            name: result.artist
+          },
+          duration: {
+            seconds: this.parseDurationToSeconds(result.duration)
+          },
+          thumbnail: result.thumbnail,
+          url: result.url || `https://youtube.com/watch?v=${result.videoId}`
+        };
+
+        await this.http.post(`${this.configService.apiUrl}/api/queue/${roomCode}/add-from-search`, {
+          searchResult: searchResultData,
+          addedBy: addedBy
+        }).toPromise();
+      } else {
+        // Use the existing method for URLs and other types
+        await this.queueService.addToQueue(roomCode, {
+          id: result.id,
+          title: result.title,
+          artist: result.artist,
+          duration: this.parseDurationToSeconds(result.duration),
+          url: result.url || '',
+          videoId: result.videoId || '',
+          spotifyId: result.spotifyId || '',
+          thumbnail: result.thumbnail
+        }, addedBy).toPromise();
+      }
 
       this.addedSongs.add(result.id);
 
