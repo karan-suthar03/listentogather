@@ -186,10 +186,12 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     const response = await this.http.post<any>(`${this.configService.apiUrl}/api/music/search/youtube`, {url}).toPromise();
     return this.mapToSearchResults([response], 'youtube');
   }
-
   private async searchGeneral(query: string): Promise<SearchResult[]> {
-    const response = await this.http.post<any>(`${this.configService.apiUrl}/api/music/search`, {query}).toPromise();
-    return this.mapToSearchResults(response.results || [], 'search');
+    const response = await this.http.get<any>(`${this.configService.apiUrl}/api/search/youtube?q=${encodeURIComponent(query)}&limit=10`).toPromise();
+    if (response.success && response.data && response.data.results) {
+      return this.mapYouTubeToSearchResults(response.data.results);
+    }
+    return [];
   }
 
   private mapToSearchResults(tracks: any[], source: string): SearchResult[] {
@@ -203,6 +205,20 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       url: track.url || track.external_urls?.spotify,
       videoId: track.videoId,
       spotifyId: track.spotifyId || track.id
+    }));
+  }
+
+  private mapYouTubeToSearchResults(videos: any[]): SearchResult[] {
+    return videos.map((video: any) => ({
+      id: video.videoId,
+      title: video.title,
+      artist: video.author.name,
+      album: '',
+      duration: video.duration.timestamp,
+      thumbnail: video.thumbnail,
+      url: video.url,
+      videoId: video.videoId,
+      spotifyId: ''
     }));
   }
 
