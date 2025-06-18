@@ -167,3 +167,41 @@
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
 }
+
+.reconnecting-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.reconnecting-content {
+  text-align: center;
+  padding: 2rem;
+  background: rgba(13, 13, 13, 0.95);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reconnecting-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #fbbf24;
+}
+
+.reconnecting-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.hidden {
+  display: none !important;
+}

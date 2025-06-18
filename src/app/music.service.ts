@@ -204,6 +204,29 @@ export class MusicService {
     return this.audioPlayer.duration || 0;
   }
 
+  seekTo(time: number): void {
+    if (this.audioPlayer.duration && time >= 0 && time <= this.audioPlayer.duration) {
+      this.audioPlayer.currentTime = time;
+    }
+  }
+
+  play(): Promise<void> {
+    return this.audioPlayer.play();
+  }
+
+  pause(): void {
+    this.audioPlayer.pause();
+  }
+
+  togglePlay(): Promise<void> {
+    if (this.audioPlayer.paused) {
+      return this.play();
+    } else {
+      this.pause();
+      return Promise.resolve();
+    }
+  }
+
   destroy(): void {
     this.audioPlayer.pause();
     this.audioPlayer.removeAttribute('src');

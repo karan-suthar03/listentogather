@@ -1,0 +1,108 @@
+
+.progress-section {
+  padding: 16px 24px 8px;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  min-width: 40px;
+  text-align: center;
+}
+
+.seekbar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+  transition: height 0.2s ease;
+}
+
+.seekbar:hover {
+  height: 4px;
+}
+
+.seekbar-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 2px;
+  transition: width 0.1s ease;
+  pointer-events: none;
+}
+
+.seekbar-handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.seekbar:hover .seekbar-handle {
+  opacity: 1;
+}
+
+.seekbar-handle.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.desktop-seekbar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: height 0.2s ease;
+}
+
+.desktop-seekbar:hover {
+  height: 4px;
+}
+
+.desktop-seekbar .seekbar-fill {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.desktop-seekbar .seekbar-handle {
+  width: 10px;
+  height: 10px;
+}
+
+body.seeking {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.seeking * {
+  cursor: grabbing !important;
+}
+
+.seekbar-fill,
+.seekbar-handle {
+  will-change: transform, width;
+}
+
+.seekbar:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.seekbar:focus .seekbar-handle {
+  opacity: 1;
+}

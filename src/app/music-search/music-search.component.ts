@@ -5,6 +5,7 @@ import {MusicService} from '../music.service';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '../config.service';
 import {RoomStateService} from '../room-state.service';
+import {ActivatedRoute} from '@angular/router';
 
 export interface SearchResult {
   id: string;
@@ -40,7 +41,8 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     private musicService: MusicService,
     private http: HttpClient,
     private configService: ConfigService,
-    private roomStateService: RoomStateService
+    private roomStateService: RoomStateService,
+    private route: ActivatedRoute
   ) {
   }
 
@@ -89,6 +91,7 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       this.performSearch(this.query);
     }
   }
+
   async handleSongAdd(result: SearchResult): Promise<void> {
     if (this.addedSongs.has(result.id) || this.addingSongs.has(result.id)) {
       return;
@@ -100,9 +103,7 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       const currentUser = this.roomStateService.getUser();
       const addedBy = currentUser?.name || 'You';
 
-      // Check if this is a search result (has videoId from YouTube search)
       if (result.videoId && this.inputType === 'search') {
-        // Use the new endpoint for search results
         const searchResultData = {
           videoId: result.videoId,
           title: result.title,
@@ -121,7 +122,6 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
           addedBy: addedBy
         }).toPromise();
       } else {
-        // Use the existing method for URLs and other types
         await this.queueService.addToQueue(roomCode, {
           id: result.id,
           title: result.title,
@@ -208,6 +208,7 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
     const response = await this.http.post<any>(`${this.configService.apiUrl}/api/music/search/youtube`, {url}).toPromise();
     return this.mapToSearchResults([response], 'youtube');
   }
+
   private async searchGeneral(query: string): Promise<SearchResult[]> {
     const response = await this.http.get<any>(`${this.configService.apiUrl}/api/search/youtube?q=${encodeURIComponent(query)}&limit=10`).toPromise();
     if (response.success && response.data && response.data.results) {
@@ -261,5 +262,25 @@ export class MusicSearchComponent implements OnInit, OnDestroy {
       return parseInt(parts[0]) * 60 + parseInt(parts[1]);
     }
     return 0;
+  }
+
+  private getRoomCode(): string {
+    let roomCode = this.roomStateService.getRoomCode();
+
+    if (!roomCode) {
+      roomCode = this.route.snapshot.params['roomCode'];
+      console.log('🔄 Room code from route params:', roomCode);
+    }
+
+    if (!roomCode && this.route.parent) {
+      roomCode = this.route.parent.snapshot.params['roomCode'];
+      console.log('🔄 Room code from parent route params:', roomCode);
+    }
+
+    if (!roomCode) {
+      console.error('❌ No room code available in music search component');
+    }
+
+    return roomCode || '';
   }
 }

@@ -9,7 +9,6 @@ import {ConfigService} from './config.service';
 })
 export class SocketService implements OnDestroy {
   private socket: any;
-  // Shared subjects for all socket events
   private roomUpdate$ = new Subject<Room>();
   private userJoined$ = new Subject<{ user: User, room: Room }>();
   private userLeft$ = new Subject<{ user: User, room: Room }>();
@@ -32,9 +31,15 @@ export class SocketService implements OnDestroy {
   constructor(private configService: ConfigService) {
     this.socket = io(this.configService.socketUrl, {
       transports: ['websocket', 'polling'],
-      forceNew: true,
+      forceNew: false,
       reconnection: true,
-      timeout: 5000
+      reconnectionAttempts: 10,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+      timeout: 10000,
+      upgrade: true,
+      rememberUpgrade: true,
+      autoConnect: true
     });
 
     this.setupSocketListeners();
@@ -48,7 +53,6 @@ export class SocketService implements OnDestroy {
     this.socket.emit('leave-room', {roomCode});
   }
 
-  // Observable getters - return shared observables instead of creating new ones
   onRoomUpdate(): Observable<Room> {
     return this.roomUpdate$.asObservable();
   }
@@ -172,6 +176,14 @@ export class SocketService implements OnDestroy {
     return this.socket.connected;
   }
 
+  getSocketStatus(): { connected: boolean, id: string | undefined, transport: string | undefined } {
+    return {
+      connected: this.socket.connected,
+      id: this.socket.id,
+      transport: this.socket.io?.engine?.transport?.name
+    };
+  }
+
   onQueueItemProgress(): Observable<{ queueItemId: string, progress: number, status: string }> {
     return this.queueItemProgress$.asObservable();
   }
@@ -212,13 +224,24 @@ export class SocketService implements OnDestroy {
     return this.hostChanged$.asObservable();
   }
 
-  // Host management methods
   transferHost(roomCode: string, newHostId: string): void {
     this.socket.emit('transfer-host', {roomCode, newHostId});
   }
 
+  layoutChangeReconnect(roomCode: string, user: User, reason: string): void {
+    console.log(`📱 Sending layout change reconnect for room ${roomCode}`);
+    this.socket.emit('layout-change-reconnect', {roomCode, user, reason});
+  }
+
+  onLayoutReconnectSuccess(): Observable<{ roomCode: string, message: string }> {
+    return new Observable(observer => {
+      this.socket.on('layout-reconnect-success', (data: { roomCode: string, message: string }) => {
+        observer.next(data);
+      });
+    });
+  }
+
   ngOnDestroy(): void {
-    // Complete and clean up all subjects
     this.roomUpdate$.complete();
     this.userJoined$.complete();
     this.userLeft$.complete();
@@ -238,14 +261,22 @@ export class SocketService implements OnDestroy {
     this.socketConnect$.complete();
     this.hostChanged$.complete();
 
-    // Disconnect socket
     if (this.socket) {
       this.socket.disconnect();
     }
   }
 
+  forceReconnect(): void {
+    console.log('🔄 Force reconnecting socket...');
+    if (this.socket) {
+      this.socket.disconnect();
+      setTimeout(() => {
+        this.socket.connect();
+      }, 100);
+    }
+  }
+
   private setupSocketListeners(): void {
-    // Set up all socket listeners ONCE
     this.socket.on('room-updated', (room: Room) => {
       this.roomUpdate$.next(room);
     });
@@ -306,7 +337,6 @@ export class SocketService implements OnDestroy {
       this.forceDisconnect$.next(data);
     });
 
-    // Handle socket connection events for better sync
     this.socket.on('connect', () => {
       console.log('🔌 Socket connected');
       this.socketConnect$.next();

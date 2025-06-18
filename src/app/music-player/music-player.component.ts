@@ -27,22 +27,20 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
-  isDraggingProgress: boolean = false;
   isDraggingVolume: boolean = false;
   autoplayBlocked: boolean = false;
   isExpanded: boolean = false;
   isMobile: boolean = false;
+  isDragging: boolean = false;
+  seekPreview: number = 0;
+  isHovering: boolean = false;
   private lastSyncTime: number = 0;
   private syncTimeThreshold: number = 60000;
   private isInitialSyncReceived: boolean = false;
-  private boundProgressMouseMove?: (event: MouseEvent) => void;
-  private boundProgressMouseUp?: (event: MouseEvent) => void;
   private boundVolumeMouseMove?: (event: MouseEvent) => void;
   private boundVolumeMouseUp?: (event: MouseEvent) => void;
-  private draggingProgressElement?: HTMLElement;
   private draggingVolumeElement?: HTMLElement;
-  private lastProgressUpdate: number = 0;
-  private progressUpdateThrottle: number = 100;
+  private animationFrameId: number | null = null;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -69,25 +67,21 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
 
+    if (this.isDragging) {
+      document.removeEventListener('mousemove', this.updateSeek);
+      document.removeEventListener('mouseup', this.endSeek);
+      document.body.style.cursor = '';
+    }
+
+    if (this.isDraggingVolume) {
+      document.removeEventListener('mousemove', this.updateVolumeSeek);
+      document.removeEventListener('mouseup', this.endVolumeSeek);
+      document.body.style.cursor = '';
+    }
+
     window.removeEventListener('resize', () => {
       this.checkIfMobile();
     });
-
-    this.draggingProgressElement = undefined;
-    this.draggingVolumeElement = undefined;
-
-    if (this.boundProgressMouseMove) {
-      document.removeEventListener('mousemove', this.boundProgressMouseMove);
-    }
-    if (this.boundProgressMouseUp) {
-      document.removeEventListener('mouseup', this.boundProgressMouseUp);
-    }
-    if (this.boundVolumeMouseMove) {
-      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
-    }
-    if (this.boundVolumeMouseUp) {
-      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
-    }
   }
 
   togglePlay(): void {
@@ -133,28 +127,18 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   onProgressClick(event: MouseEvent): void {
-    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0 || this.isDragging) {
       return;
     }
 
     const progressContainer = event.currentTarget as HTMLElement;
     const rect = progressContainer.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
-    const percentage = clickX / rect.width;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
     const seekTime = percentage * this.duration;
 
-    this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
-  }
+    this.currentTime = seekTime;
 
-  onVolumeClick(event: MouseEvent): void {
-    const volumeTrack = event.currentTarget as HTMLElement;
-    const rect = volumeTrack.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-
-    this.volume = percentage;
-    this.isMuted = false;
-    this.musicService.setVolume(percentage);
   }
 
   toggleMute(): void {
@@ -251,90 +235,70 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     event.target.style.display = 'none';
   }
 
-  onProgressMouseDown(event: MouseEvent): void {
-    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
-      return;
-    }
+  seekTo(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0 || this.isDragging) return;
 
-    this.isDraggingProgress = true;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const seekTime = percentage * this.duration;
 
-    let progressElement = event.target as HTMLElement;
-    while (progressElement && !progressElement.classList.contains('progress-track')) {
-      progressElement = progressElement.parentElement as HTMLElement;
-    }
-    this.draggingProgressElement = progressElement;
+    this.currentTime = seekTime;
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
+  }
 
-    this.updateProgressFromEvent(event, false);
+  startSeek(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
 
-    this.boundProgressMouseMove = this.onProgressMouseMove.bind(this);
-    this.boundProgressMouseUp = this.onProgressMouseUp.bind(this);
+    this.isDragging = true;
+    this.seekPreview = this.currentTime;
 
-    document.addEventListener('mousemove', this.boundProgressMouseMove);
-    document.addEventListener('mouseup', this.boundProgressMouseUp);
+    document.addEventListener('mousemove', this.updateSeek);
+    document.addEventListener('mouseup', this.endSeek);
+    document.body.style.cursor = 'grabbing';
 
     event.preventDefault();
+    event.stopPropagation();
   }
 
-  onProgressMouseMove(event: MouseEvent): void {
-    if (!this.isDraggingProgress) return;
-    this.updateProgressFromEvent(event, false);
+  updateSeek = (event: MouseEvent): void => {
+    if (!this.isDragging || !this.duration) return;
+
+    const seekbars = document.querySelectorAll('.seekbar-container, .desktop-seekbar-container');
+    if (seekbars.length === 0) return;
+
+    const rect = seekbars[0].getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    this.seekPreview = percentage * this.duration;
+  }
+  endSeek = (): void => {
+    if (!this.isDragging || !this.currentUser || !this.roomCode) return;
+
+    this.isDragging = false;
+    document.removeEventListener('mousemove', this.updateSeek);
+    document.removeEventListener('mouseup', this.endSeek);
+    document.body.style.cursor = '';
+
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, this.seekPreview);
   }
 
-  onProgressMouseUp(event: MouseEvent): void {
-    if (!this.isDraggingProgress) return;
-
-    this.isDraggingProgress = false;
-    this.updateProgressFromEvent(event, true);
-
-    this.draggingProgressElement = undefined;
-
-    if (this.boundProgressMouseMove) {
-      document.removeEventListener('mousemove', this.boundProgressMouseMove);
-    }
-    if (this.boundProgressMouseUp) {
-      document.removeEventListener('mouseup', this.boundProgressMouseUp);
-    }
+  getProgress(): number {
+    if (!this.duration) return 0;
+    const time = this.isDragging ? this.seekPreview : this.currentTime;
+    return Math.max(0, Math.min(100, (time / this.duration) * 100));
   }
 
-  onVolumeMouseDown(event: MouseEvent): void {
-    this.isDraggingVolume = true;
+  startSeekTouch(event: TouchEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
 
-    let volumeElement = event.target as HTMLElement;
-    while (volumeElement && !volumeElement.classList.contains('volume-track')) {
-      volumeElement = volumeElement.parentElement as HTMLElement;
-    }
-    this.draggingVolumeElement = volumeElement;
+    const touch = event.touches[0];
+    const mouseEvent = new MouseEvent('mousedown', {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0
+    });
 
-    this.updateVolumeFromEvent(event);
-
-    this.boundVolumeMouseMove = this.onVolumeMouseMove.bind(this);
-    this.boundVolumeMouseUp = this.onVolumeMouseUp.bind(this);
-
-    document.addEventListener('mousemove', this.boundVolumeMouseMove);
-    document.addEventListener('mouseup', this.boundVolumeMouseUp);
-
+    this.startSeek(mouseEvent);
     event.preventDefault();
-  }
-
-  onVolumeMouseMove(event: MouseEvent): void {
-    if (!this.isDraggingVolume) return;
-    this.updateVolumeFromEvent(event);
-  }
-
-  onVolumeMouseUp(event: MouseEvent): void {
-    if (!this.isDraggingVolume) return;
-
-    this.isDraggingVolume = false;
-    this.updateVolumeFromEvent(event);
-
-    this.draggingVolumeElement = undefined;
-
-    if (this.boundVolumeMouseMove) {
-      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
-    }
-    if (this.boundVolumeMouseUp) {
-      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
-    }
   }
 
   async onResumePlayback() {
@@ -352,6 +316,67 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   closeExpanded(): void {
     this.isExpanded = false;
+  }
+
+  getVolumePercentage(): number {
+    return Math.round((this.isMuted ? 0 : this.volume) * 100);
+  }
+
+  onVolumeClick(event: MouseEvent): void {
+    if (this.isDraggingVolume) return;
+
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+
+    this.volume = percentage;
+    this.isMuted = false;
+    this.musicService.setVolume(percentage);
+  }
+
+  startVolumeSeek(event: MouseEvent): void {
+    this.isDraggingVolume = true;
+
+    document.addEventListener('mousemove', this.updateVolumeSeek);
+    document.addEventListener('mouseup', this.endVolumeSeek);
+    document.body.style.cursor = 'grabbing';
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  updateVolumeSeek = (event: MouseEvent): void => {
+    if (!this.isDraggingVolume) return;
+
+    const volumeContainers = document.querySelectorAll('.volume-seekbar-container, .mobile-volume-seekbar-container');
+    if (volumeContainers.length === 0) return;
+
+    const rect = volumeContainers[0].getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+
+    this.volume = percentage;
+    this.isMuted = false;
+    this.musicService.setVolume(percentage);
+  }
+
+  endVolumeSeek = (): void => {
+    if (!this.isDraggingVolume) return;
+
+    this.isDraggingVolume = false;
+    document.removeEventListener('mousemove', this.updateVolumeSeek);
+    document.removeEventListener('mouseup', this.endVolumeSeek);
+    document.body.style.cursor = '';
+  }
+
+  startVolumeTouchSeek(event: TouchEvent): void {
+    const touch = event.touches[0];
+    const mouseEvent = new MouseEvent('mousedown', {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0
+    });
+
+    this.startVolumeSeek(mouseEvent);
+    event.preventDefault();
   }
 
   private setupRoomStateListeners(): void {
@@ -396,11 +421,13 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
         this.duration = this.musicService.getDuration();
       })
     );
-
     this.subscriptions.push(
       this.musicService.getPlaybackState().subscribe(state => {
         this.isPlaying = state.isPlaying;
-        this.currentTime = state.currentTime;
+
+        if (!this.isDragging) {
+          this.currentTime = state.currentTime;
+        }
 
         const newDuration = this.musicService.getDuration();
         if (newDuration && newDuration > 0) {
@@ -408,13 +435,14 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
         }
       })
     );
-
     this.subscriptions.push(
       this.socketService.onMusicState().subscribe(syncData => {
         this.lastSyncTime = Date.now();
         this.isInitialSyncReceived = true;
 
-        this.musicService.syncWithState(syncData);
+        if (!this.isDragging) {
+          this.musicService.syncWithState(syncData);
+        }
       })
     );
 
@@ -441,56 +469,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       this.musicService.autoplayBlocked$.subscribe(blocked => {
         this.autoplayBlocked = blocked;
         console.log('🎵 Autoplay blocked state:', blocked);
-      })
-    );
-  }
-
-  private updateProgressFromEvent(event: MouseEvent, sendToServer: boolean = true): void {
-    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
-
-    let progressElement = this.draggingProgressElement;
-    if (!progressElement) {
-      progressElement = event.target as HTMLElement;
-      while (progressElement && !progressElement.classList.contains('progress-track')) {
-        progressElement = progressElement.parentElement as HTMLElement;
-      }
-    }
-    if (!progressElement) return;
-
-    const rect = progressElement.getBoundingClientRect();
-    const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-    const percentage = clickX / rect.width;
-    const seekTime = percentage * this.duration;
-
-    this.currentTime = seekTime;
-
-    if (sendToServer) {
-      this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
-    }
-  }
-
-  private updateVolumeFromEvent(event: MouseEvent): void {
-    let volumeElement = this.draggingVolumeElement;
-    if (!volumeElement) {
-      volumeElement = event.target as HTMLElement;
-      while (volumeElement && !volumeElement.classList.contains('volume-track')) {
-        volumeElement = volumeElement.parentElement as HTMLElement;
-      }
-    }
-    if (!volumeElement) return;
-
-    const rect = volumeElement.getBoundingClientRect();
-    const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-
-    this.volume = percentage;
-    this.isMuted = false;
-    this.musicService.setVolume(percentage);
+      }));
   }
 
   private checkIfMobile(): void {
     const userAgent = navigator.userAgent || navigator.vendor || (window as any)['opera'] || '';
-
     this.isMobile = window.innerWidth <= 768 || /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
   }
 }

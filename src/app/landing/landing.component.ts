@@ -46,6 +46,7 @@ export class LandingComponent {
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
           this.roomStateService.setInRoom(true);
+
           SecureStorageService.storeUserSession(response.data.user.id, response.data.room.code);
 
           this.notificationService.show('Room created successfully! Redirecting...', 'success');
@@ -78,6 +79,7 @@ export class LandingComponent {
           this.roomStateService.setRoom(response.data.room);
           this.roomStateService.setUser(response.data.user);
           this.roomStateService.setInRoom(true);
+
           SecureStorageService.storeUserSession(response.data.user.id, this.roomCode);
 
           this.notificationService.show('Successfully joined room! Redirecting...', 'success');

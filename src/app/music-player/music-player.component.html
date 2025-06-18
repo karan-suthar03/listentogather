@@ -71,30 +71,28 @@
           <h1 class="mobile-track-title-modern">{{ currentTrack?.title || 'No song selected' }}</h1>
           <p class="mobile-track-artist-modern">{{ currentTrack?.artist || 'Unknown artist' }}</p>
         </div>
-
-        <div class="mobile-progress-section-modern">
-          <div class="mobile-time-labels-modern">
-            <span>{{ formatTime(currentTime) }}</span>
-            <div class="mobile-progress-container-modern">
-              <div
-                (click)="onProgressClick($event); $event.stopPropagation()"
-                (mousedown)="onProgressMouseDown($event)"
-                [class.dragging]="isDraggingProgress"
-                [class.interactive]="currentUser"
-                class="mobile-progress-track-modern">
-                <div
-                  [class.enhanced-gradient]="isDraggingProgress"
-                  [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
-                  class="mobile-progress-fill-modern">
-                  <div
-                    [class.visible]="isDraggingProgress"
-                    [style.transform]="'translateY(-50%) translateX(50%)'"
-                    class="mobile-progress-handle">
-                  </div>
-                </div>
+        <div class="progress-section">
+          <div class="progress-container">
+            <span class="time-label">{{ formatTime(isDragging ? seekPreview : currentTime) }}</span>
+            <div
+              (click)="seekTo($event)"
+              (mousedown)="startSeek($event)"
+              (touchstart)="startSeekTouch($event)"
+              [attr.aria-label]="'Seek to position in track'"
+              [attr.aria-valuemax]="duration"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuenow]="isDragging ? seekPreview : currentTime"
+              [class.dragging]="isDragging"
+              [title]="'Current: ' + formatTime(isDragging ? seekPreview : currentTime) + ' / ' + formatTime(duration)"
+              class="seekbar-container"
+              role="slider"
+              tabindex="0">
+              <div class="seekbar-track">
+                <div [style.width.%]="getProgress()" class="seekbar-fill"></div>
+                <div [class.active]="isDragging" [style.left.%]="getProgress()" class="seekbar-handle"></div>
               </div>
             </div>
-            <span>{{ formatTime(duration) }}</span>
+            <span class="time-label">{{ formatTime(duration) }}</span>
           </div>
         </div>
 
@@ -120,7 +118,6 @@
             <lucide-icon name="skip-forward" size="24"></lucide-icon>
           </button>
         </div>
-
         <div class="mobile-bottom-controls">
           <button
             class="mobile-bottom-btn-modern">
@@ -128,31 +125,51 @@
           </button>
           <button
             (click)="toggleMute(); $event.stopPropagation()"
-            class="mobile-bottom-btn-modern">
-            <lucide-icon [name]="getVolumeIcon()" size="20"></lucide-icon>
+            class="mobile-volume-btn-modern">
+            <lucide-icon [name]="getVolumeIcon()" size="18"></lucide-icon>
           </button>
+          <div class="mobile-volume-container">
+            <div
+              (click)="onVolumeClick($event); $event.stopPropagation()"
+              (mousedown)="startVolumeSeek($event)"
+              (touchstart)="startVolumeTouchSeek($event)"
+              [attr.aria-label]="'Volume control'"
+              [attr.aria-valuemax]="100"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuenow]="isMuted ? 0 : volume * 100"
+              [class.dragging]="isDraggingVolume"
+              [title]="'Volume: ' + getVolumePercentage() + '%'"
+              class="mobile-volume-seekbar-container"
+              role="slider"
+              tabindex="0">
+              <div class="mobile-volume-seekbar-track">
+                <div [style.width.%]="isMuted ? 0 : volume * 100" class="mobile-volume-seekbar-fill"></div>
+                <div [class.active]="isDraggingVolume"
+                     [style.left.%]="isMuted ? 0 : volume * 100"
+                     class="mobile-volume-seekbar-handle"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
   <div *ngIf="!isMobile" class="desktop-player-modern">
-    <div class="desktop-progress-top">
-      <div
-        (click)="onProgressClick($event); $event.stopPropagation()"
-        (mousedown)="onProgressMouseDown($event)"
-        [class.dragging]="isDraggingProgress"
-        [class.interactive]="currentUser"
-        class="desktop-progress-track-top">
-        <div
-          [class.enhanced-gradient]="isDraggingProgress"
-          [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
-          class="desktop-progress-fill-top">
-          <div
-            [class.visible]="isDraggingProgress"
-            [style.transform]="'translateY(-50%) translateX(50%)'"
-            class="desktop-progress-handle">
-          </div>
-        </div>
+    <div (click)="seekTo($event)"
+         (mousedown)="startSeek($event)"
+         (touchstart)="startSeekTouch($event)"
+         [attr.aria-label]="'Seek to position in track'"
+         [attr.aria-valuemax]="duration"
+         [attr.aria-valuemin]="0"
+         [attr.aria-valuenow]="isDragging ? seekPreview : currentTime"
+         [class.dragging]="isDragging"
+         [title]="'Current: ' + formatTime(isDragging ? seekPreview : currentTime) + ' / ' + formatTime(duration)"
+         class="desktop-seekbar-container"
+         role="slider"
+         tabindex="0">
+      <div class="desktop-seekbar-track">
+        <div [style.width.%]="getProgress()" class="seekbar-fill"></div>
+        <div [class.active]="isDragging" [style.left.%]="getProgress()" class="seekbar-handle"></div>
       </div>
     </div>
 
@@ -234,16 +251,24 @@
           class="desktop-volume-btn">
           <lucide-icon [name]="getVolumeIcon()" size="16"></lucide-icon>
         </button>
-
         <div class="desktop-volume-container">
           <div
             (click)="onVolumeClick($event); $event.stopPropagation()"
-            (mousedown)="onVolumeMouseDown($event)"
+            (mousedown)="startVolumeSeek($event)"
+            [attr.aria-label]="'Volume control'"
+            [attr.aria-valuemax]="100"
+            [attr.aria-valuemin]="0"
+            [attr.aria-valuenow]="isMuted ? 0 : volume * 100"
             [class.dragging]="isDraggingVolume"
-            class="desktop-volume-track">
-            <div
-              [style.width.%]="isMuted ? 0 : volume * 100"
-              class="desktop-volume-fill">
+            [title]="'Volume: ' + getVolumePercentage() + '%'"
+            class="volume-seekbar-container"
+            role="slider"
+            tabindex="0">
+            <div class="volume-seekbar-track">
+              <div [style.width.%]="isMuted ? 0 : volume * 100" class="volume-seekbar-fill"></div>
+              <div [class.active]="isDraggingVolume"
+                   [style.left.%]="isMuted ? 0 : volume * 100"
+                   class="volume-seekbar-handle"></div>
             </div>
           </div>
         </div>

@@ -23,13 +23,21 @@
     </div>
   </div>
 
-  <div *ngIf="!isLoading" class="main-content">
+  <!-- Add reconnecting indicator -->
+  <div *ngIf="!isLoading && isReconnecting" class="reconnecting-container">
+    <div class="reconnecting-content">
+      <div class="loading-spinner"></div>
+      <h3 class="reconnecting-title">Reconnecting...</h3>
+      <p class="reconnecting-subtitle">Re-establishing connection to room</p>
+    </div>
+  </div>
 
+  <div *ngIf="!isLoading" class="main-content">
     <div *ngIf="isMobile" class="mobile-layout">
-      <div *ngIf="mobileTab === 'search'" class="section-container">
+      <div [ngClass]="{'hidden': mobileTab !== 'search'}" class="section-container">
         <app-music-search></app-music-search>
       </div>
-      <div *ngIf="mobileTab === 'queue'" class="section-container">
+      <div [ngClass]="{'hidden': mobileTab !== 'queue'}" class="section-container">
         <app-queue
           (playNext)="onPlayNext($event)"
           (removeFromQueue)="onRemoveFromQueue($event)"
@@ -39,15 +47,14 @@
         </app-queue>
       </div>
 
-      <div *ngIf="mobileTab === 'room'" class="section-container">
+      <div [ngClass]="{'hidden': mobileTab !== 'room'}" class="section-container">
         <div class="participants-section">
           <app-room-details></app-room-details>
         </div>
       </div>
     </div>
-
     <div *ngIf="isTablet" class="tablet-layout">
-      <div *ngIf="desktopTab === 'search'" class="dual-section-layout">
+      <div [ngClass]="{'hidden': desktopTab !== 'search'}" class="dual-section-layout">
         <div class="section-container search-section">
           <app-music-search></app-music-search>
         </div>
@@ -61,7 +68,7 @@
           </app-queue>
         </div>
       </div>
-      <div *ngIf="desktopTab === 'room'" class="dual-section-layout">
+      <div [ngClass]="{'hidden': desktopTab !== 'room'}" class="dual-section-layout">
         <div class="section-container queue-section">
           <app-queue
             (playNext)="onPlayNext($event)"
