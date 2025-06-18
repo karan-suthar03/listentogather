@@ -27,33 +27,22 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   queue: QueueItem[] = [];
   currentTrackIndex: number = -1;
-
-  // Sync state tracking
-  private lastSyncTime: number = 0;
-  private syncTimeThreshold: number = 60000; // 1 minute instead of 5 seconds
-  private isInitialSyncReceived: boolean = false;
-
-  // Drag state for sliders
   isDraggingProgress: boolean = false;
   isDraggingVolume: boolean = false;
-
-  // Bound event handlers for proper cleanup
+  autoplayBlocked: boolean = false;
+  isExpanded: boolean = false;
+  isMobile: boolean = false;
+  private lastSyncTime: number = 0;
+  private syncTimeThreshold: number = 60000;
+  private isInitialSyncReceived: boolean = false;
   private boundProgressMouseMove?: (event: MouseEvent) => void;
   private boundProgressMouseUp?: (event: MouseEvent) => void;
   private boundVolumeMouseMove?: (event: MouseEvent) => void;
   private boundVolumeMouseUp?: (event: MouseEvent) => void;
-  
-  // Store slider elements during drag for better UX
   private draggingProgressElement?: HTMLElement;
   private draggingVolumeElement?: HTMLElement;
-  
-  // Throttling for progress updates
   private lastProgressUpdate: number = 0;
-  private progressUpdateThrottle: number = 100; // 100ms between updates
-
-  // Add autoplay blocked state
-  autoplayBlocked: boolean = false;
-
+  private progressUpdateThrottle: number = 100;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -67,20 +56,26 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupRoomStateListeners();
     this.setupMusicListeners();
-    // Set initial volume to 100%
     this.musicService.setVolume(this.volume);
-    
-    // Remove periodic sync - only sync when necessary
+
+    this.checkIfMobile();
+
+    window.addEventListener('resize', () => {
+      this.checkIfMobile();
+    });
+
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    
-    // Clear stored element references
+
+    window.removeEventListener('resize', () => {
+      this.checkIfMobile();
+    });
+
     this.draggingProgressElement = undefined;
     this.draggingVolumeElement = undefined;
-    
-    // Clean up any active drag listeners
+
     if (this.boundProgressMouseMove) {
       document.removeEventListener('mousemove', this.boundProgressMouseMove);
     }
@@ -100,11 +95,9 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Only check sync for critical operations and if we haven't synced in a very long time
-    if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 300000) { // 5 minutes
+    if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 300000) {
       console.log('🎵 User not synced recently, requesting sync before control');
       this.socketService.requestSync(this.roomCode);
-      // Allow the operation to continue after requesting sync
       setTimeout(() => {
         if (this.currentUser && this.roomCode) {
           if (this.isPlaying) {
@@ -192,7 +185,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     this.socketService.playTrackAtIndex(this.roomCode, this.currentUser.id, index);
   }
 
-  // Helper methods for button states
   isTrackReady(): boolean {
     return this.currentTrack !== null &&
       (this.currentTrack.downloadStatus === 'completed' ||
@@ -224,13 +216,10 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Check if user is in sync with the room's music state
   isInSync(): boolean {
-    // Only show out of sync if we haven't received ANY sync data yet
     return this.isInitialSyncReceived;
   }
 
-  // Debug method to check sync state
   checkSyncState(): void {
     console.log('🎵 Sync State Debug:', {
       isInitialSyncReceived: this.isInitialSyncReceived,
@@ -245,7 +234,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Manual sync trigger for debugging
   manualSync(): void {
     if (this.roomCode) {
       console.log('🎵 Manual sync triggered');
@@ -261,6 +249,109 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
   onImageError(event: any): void {
     event.target.style.display = 'none';
+  }
+
+  onProgressMouseDown(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
+      return;
+    }
+
+    this.isDraggingProgress = true;
+
+    let progressElement = event.target as HTMLElement;
+    while (progressElement && !progressElement.classList.contains('progress-track')) {
+      progressElement = progressElement.parentElement as HTMLElement;
+    }
+    this.draggingProgressElement = progressElement;
+
+    this.updateProgressFromEvent(event, false);
+
+    this.boundProgressMouseMove = this.onProgressMouseMove.bind(this);
+    this.boundProgressMouseUp = this.onProgressMouseUp.bind(this);
+
+    document.addEventListener('mousemove', this.boundProgressMouseMove);
+    document.addEventListener('mouseup', this.boundProgressMouseUp);
+
+    event.preventDefault();
+  }
+
+  onProgressMouseMove(event: MouseEvent): void {
+    if (!this.isDraggingProgress) return;
+    this.updateProgressFromEvent(event, false);
+  }
+
+  onProgressMouseUp(event: MouseEvent): void {
+    if (!this.isDraggingProgress) return;
+
+    this.isDraggingProgress = false;
+    this.updateProgressFromEvent(event, true);
+
+    this.draggingProgressElement = undefined;
+
+    if (this.boundProgressMouseMove) {
+      document.removeEventListener('mousemove', this.boundProgressMouseMove);
+    }
+    if (this.boundProgressMouseUp) {
+      document.removeEventListener('mouseup', this.boundProgressMouseUp);
+    }
+  }
+
+  onVolumeMouseDown(event: MouseEvent): void {
+    this.isDraggingVolume = true;
+
+    let volumeElement = event.target as HTMLElement;
+    while (volumeElement && !volumeElement.classList.contains('volume-track')) {
+      volumeElement = volumeElement.parentElement as HTMLElement;
+    }
+    this.draggingVolumeElement = volumeElement;
+
+    this.updateVolumeFromEvent(event);
+
+    this.boundVolumeMouseMove = this.onVolumeMouseMove.bind(this);
+    this.boundVolumeMouseUp = this.onVolumeMouseUp.bind(this);
+
+    document.addEventListener('mousemove', this.boundVolumeMouseMove);
+    document.addEventListener('mouseup', this.boundVolumeMouseUp);
+
+    event.preventDefault();
+  }
+
+  onVolumeMouseMove(event: MouseEvent): void {
+    if (!this.isDraggingVolume) return;
+    this.updateVolumeFromEvent(event);
+  }
+
+  onVolumeMouseUp(event: MouseEvent): void {
+    if (!this.isDraggingVolume) return;
+
+    this.isDraggingVolume = false;
+    this.updateVolumeFromEvent(event);
+
+    this.draggingVolumeElement = undefined;
+
+    if (this.boundVolumeMouseMove) {
+      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
+    }
+    if (this.boundVolumeMouseUp) {
+      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
+    }
+  }
+
+  async onResumePlayback() {
+    const success = await this.musicService.resumePlayback();
+    if (!success) {
+      console.log('Failed to resume playback after user interaction');
+    }
+  }
+
+  toggleExpanded(): void {
+    if (this.isMobile) {
+      this.isExpanded = !this.isExpanded;
+    }
+  }
+
+  closeExpanded(): void {
+    this.isExpanded = false;
   }
 
   private setupRoomStateListeners(): void {
@@ -280,19 +371,17 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
 
     const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
       this.isInRoom = inRoom;
-      
-      // When we join a room, immediately request sync to restore playback state
+
       if (inRoom && this.roomCode) {
         setTimeout(() => {
           if (this.roomCode) {
             this.socketService.requestSync(this.roomCode);
           }
-        }, 100); // Very short delay
+        }, 100);
       }
     });
     this.subscriptions.push(inRoomSub);
 
-    // Subscribe to autoplay blocked state
     this.subscriptions.push(
       this.musicService.autoplayBlocked$.subscribe(blocked => {
         this.autoplayBlocked = blocked;
@@ -301,7 +390,6 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   private setupMusicListeners(): void {
-    // Subscribe to current track changes
     this.subscriptions.push(
       this.musicService.getCurrentTrack().subscribe(track => {
         this.currentTrack = track;
@@ -309,15 +397,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Subscribe to playback state changes
     this.subscriptions.push(
       this.musicService.getPlaybackState().subscribe(state => {
         this.isPlaying = state.isPlaying;
-        // Always update current time from the music service, don't skip during dragging
-        // The dragging logic should be handled in the UI layer
         this.currentTime = state.currentTime;
-        
-        // Update duration when it becomes available
+
         const newDuration = this.musicService.getDuration();
         if (newDuration && newDuration > 0) {
           this.duration = newDuration;
@@ -325,18 +409,15 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Subscribe to music sync events
     this.subscriptions.push(
       this.socketService.onMusicState().subscribe(syncData => {
-        // Update sync tracking
         this.lastSyncTime = Date.now();
         this.isInitialSyncReceived = true;
-        
+
         this.musicService.syncWithState(syncData);
       })
     );
 
-    // Subscribe to queue updates
     this.subscriptions.push(
       this.queueService.queue$.subscribe(queueData => {
         this.queue = queueData.queue;
@@ -344,82 +425,29 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Subscribe to socket reconnection events to request sync
     this.subscriptions.push(
       this.socketService.onSocketConnect().subscribe(() => {
         console.log('🎵 Socket reconnected - requesting sync');
-        // Always request sync on reconnection to ensure state is restored
         setTimeout(() => {
           if (this.roomCode) {
             console.log('🎵 Requesting sync after socket reconnection...');
             this.socketService.requestSync(this.roomCode);
           }
-        }, 500); // Shorter delay for immediate sync
+        }, 500);
       })
     );
 
-    // Subscribe to autoplay blocked state
     this.subscriptions.push(
       this.musicService.autoplayBlocked$.subscribe(blocked => {
         this.autoplayBlocked = blocked;
         console.log('🎵 Autoplay blocked state:', blocked);
       })
     );
-  }  // Progress bar drag functionality
-  onProgressMouseDown(event: MouseEvent): void {
-    if (!this.currentUser || !this.roomCode || this.duration <= 0) {
-      return;
-    }
-
-    this.isDraggingProgress = true;
-    
-    // Store the progress element for the entire drag operation
-    let progressElement = event.target as HTMLElement;
-    while (progressElement && !progressElement.classList.contains('progress-track')) {
-      progressElement = progressElement.parentElement as HTMLElement;
-    }
-    this.draggingProgressElement = progressElement;
-    
-    this.updateProgressFromEvent(event, false); // Don't send to server during drag start
-    
-    // Create bound functions for proper cleanup
-    this.boundProgressMouseMove = this.onProgressMouseMove.bind(this);
-    this.boundProgressMouseUp = this.onProgressMouseUp.bind(this);
-    
-    // Add global mouse event listeners
-    document.addEventListener('mousemove', this.boundProgressMouseMove);
-    document.addEventListener('mouseup', this.boundProgressMouseUp);
-    
-    // Prevent text selection during drag
-    event.preventDefault();
   }
 
-  onProgressMouseMove(event: MouseEvent): void {
-    if (!this.isDraggingProgress) return;
-    this.updateProgressFromEvent(event, false); // Don't send to server during drag
-  }
-
-  onProgressMouseUp(event: MouseEvent): void {
-    if (!this.isDraggingProgress) return;
-    
-    this.isDraggingProgress = false;
-    // Final update when drag ends - this one DOES send to server
-    this.updateProgressFromEvent(event, true);
-    
-    // Clear the stored element reference
-    this.draggingProgressElement = undefined;
-    
-    // Remove global mouse event listeners
-    if (this.boundProgressMouseMove) {
-      document.removeEventListener('mousemove', this.boundProgressMouseMove);
-    }
-    if (this.boundProgressMouseUp) {
-      document.removeEventListener('mouseup', this.boundProgressMouseUp);
-    }
-  }  private updateProgressFromEvent(event: MouseEvent, sendToServer: boolean = true): void {
+  private updateProgressFromEvent(event: MouseEvent, sendToServer: boolean = true): void {
     if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
 
-    // Use the stored progress element if we're dragging, otherwise find it
     let progressElement = this.draggingProgressElement;
     if (!progressElement) {
       progressElement = event.target as HTMLElement;
@@ -434,63 +462,14 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     const percentage = clickX / rect.width;
     const seekTime = percentage * this.duration;
 
-    // Update local display immediately for smooth dragging
     this.currentTime = seekTime;
-    
-    // Only send to server if requested (on click or drag end)
+
     if (sendToServer) {
       this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
-    }
-  }// Volume slider drag functionality
-  onVolumeMouseDown(event: MouseEvent): void {
-    this.isDraggingVolume = true;
-    
-    // Store the volume element for the entire drag operation
-    let volumeElement = event.target as HTMLElement;
-    while (volumeElement && !volumeElement.classList.contains('volume-track')) {
-      volumeElement = volumeElement.parentElement as HTMLElement;
-    }
-    this.draggingVolumeElement = volumeElement;
-    
-    this.updateVolumeFromEvent(event); // Update volume immediately for real-time feedback
-    
-    // Create bound functions for proper cleanup
-    this.boundVolumeMouseMove = this.onVolumeMouseMove.bind(this);
-    this.boundVolumeMouseUp = this.onVolumeMouseUp.bind(this);
-    
-    // Add global mouse event listeners
-    document.addEventListener('mousemove', this.boundVolumeMouseMove);
-    document.addEventListener('mouseup', this.boundVolumeMouseUp);
-    
-    // Prevent text selection during drag
-    event.preventDefault();
-  }
-
-  onVolumeMouseMove(event: MouseEvent): void {
-    if (!this.isDraggingVolume) return;
-    this.updateVolumeFromEvent(event); // Continuous volume updates for real-time feedback
-  }
-
-  onVolumeMouseUp(event: MouseEvent): void {
-    if (!this.isDraggingVolume) return;
-    
-    this.isDraggingVolume = false;
-    this.updateVolumeFromEvent(event); // Final volume update
-    
-    // Clear the stored element reference
-    this.draggingVolumeElement = undefined;
-    
-    // Remove global mouse event listeners
-    if (this.boundVolumeMouseMove) {
-      document.removeEventListener('mousemove', this.boundVolumeMouseMove);
-    }
-    if (this.boundVolumeMouseUp) {
-      document.removeEventListener('mouseup', this.boundVolumeMouseUp);
     }
   }
 
   private updateVolumeFromEvent(event: MouseEvent): void {
-    // Use the stored volume element if we're dragging, otherwise find it
     let volumeElement = this.draggingVolumeElement;
     if (!volumeElement) {
       volumeElement = event.target as HTMLElement;
@@ -504,17 +483,14 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
     const percentage = Math.max(0, Math.min(1, clickX / rect.width));
 
-    // Update local display and audio volume immediately for real-time feedback
     this.volume = percentage;
     this.isMuted = false;
     this.musicService.setVolume(percentage);
   }
 
-  // Method to handle autoplay prompt interaction
-  async onResumePlayback() {
-    const success = await this.musicService.resumePlayback();
-    if (!success) {
-      console.log('Failed to resume playback after user interaction');
-    }
+  private checkIfMobile(): void {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any)['opera'] || '';
+
+    this.isMobile = window.innerWidth <= 768 || /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
   }
 }

@@ -1,0 +1,32 @@
+<!-- Navigation -->
+<div class="navigation-container">
+  <div class="nav-wrapper">
+    <div class="nav-buttons">
+      <button
+        (click)="onTabChange('search')"
+        [class.active]="activeTab === 'search'"
+        class="nav-button">
+        <lucide-icon name="search" size="16"></lucide-icon>
+        <span>Search</span>
+      </button>
+
+      <button
+        (click)="onTabChange('queue')"
+        *ngIf="isMobile"
+        [class.active]="activeTab === 'queue'"
+        class="nav-button">
+        <lucide-icon name="music" size="16"></lucide-icon>
+        <span>Queue</span>
+        <span *ngIf="queueCount > 0" class="queue-badge">{{ queueCount }}</span>
+      </button>
+
+      <button
+        (click)="onTabChange('room')"
+        [class.active]="activeTab === 'room'"
+        class="nav-button">
+        <lucide-icon name="users" size="16"></lucide-icon>
+        <span>Room</span>
+      </button>
+    </div>
+  </div>
+</div>

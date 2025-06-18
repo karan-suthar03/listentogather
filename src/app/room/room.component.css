@@ -8,37 +8,80 @@
 
 .main-content {
   height: calc(100vh - 90px);
-  display: flex;
   overflow: hidden;
 }
 
-.left-panel {
+.mobile-layout {
+  height: 100%;
+  padding-top: 80px;
+}
+
+.tablet-layout {
+  height: 100%;
+  padding-top: 80px;
+}
+
+.dual-section-layout {
+  display: flex;
+  height: 100%;
+  gap: 1px;
+}
+
+.dual-section-layout .section-container {
+  flex: 1;
+  padding: 20px;
+}
+
+.desktop-layout {
+  display: flex;
+  height: 100%;
+  gap: 1px;
+}
+
+.desktop-layout .section-container {
+  flex: 1;
+  padding: 20px;
+}
+
+.section-container {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
   background: rgba(13, 13, 13, 0.95);
 }
 
-.center-panel {
+.search-section {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.queue-section {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.participants-section {
   background: rgba(13, 13, 13, 0.95);
 }
 
-.right-panel {
-  background: rgba(13, 13, 13, 0.95);
+.queue-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
 }
 
-.resizer {
-  width: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  cursor: col-resize;
-  transition: background-color 0.2s ease;
-  flex-shrink: 0;
-  position: relative;
+.queue-placeholder h2 {
+  color: white;
+  margin-bottom: 8px;
+  font-size: 1.5rem;
 }
 
-.resizer:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.resizer:active {
-  background: rgba(255, 255, 255, 0.5);
+@media (max-width: 1023px) {
+  .mobile-layout .section-container {
+    padding: 16px;
+  }
 }
 
 .resizer::before {
@@ -49,6 +92,11 @@
   right: -2px;
   bottom: 0;
   cursor: col-resize;
+}
+
+.main-content > div {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .resizable-panel::-webkit-scrollbar {
@@ -74,7 +122,6 @@
   z-index: 100;
 }
 
-/* Loading Screen Styles */
 .loading-container {
   height: 100vh;
   display: flex;

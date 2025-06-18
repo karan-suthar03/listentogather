@@ -5,6 +5,7 @@ import {SocketService} from '../socket.service';
 import {RoomService} from '../room.service';
 import {NotificationService} from '../notification.service';
 import {MusicService} from '../music.service';
+import {QueueItem, QueueService} from '../queue.service';
 import {Subscription} from 'rxjs';
 import {SecureStorageService} from '../services/secure-storage.service';
 
@@ -16,20 +17,19 @@ import {SecureStorageService} from '../services/secure-storage.service';
 export class RoomComponent implements OnInit, OnDestroy {
   roomCode = '';
   userName = '';
-
-  leftWidth = 20;
-  centerWidth = 60;
-  rightWidth = 20;
+  mobileTab: 'search' | 'queue' | 'room' = 'search';
+  desktopTab: 'search' | 'room' = 'search';
+  queueCount = 0;
+  isMobile = false;
+  isTablet = false;
+  isDesktop = false;
+  queueItems: QueueItem[] = [];
+  currentTrackIndex: number = -1;
+  currentlyPlayingId?: number | string;
 
   isLoading = true;
   loadingMessage = 'Loading room...';
 
-  private isResizing = false;
-  private currentResizer: 'left' | 'right' | null = null;
-  private startX = 0;
-  private startLeftWidth = 0;
-  private startCenterWidth = 0;
-  private startRightWidth = 0;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -39,18 +39,30 @@ export class RoomComponent implements OnInit, OnDestroy {
     private socketService: SocketService,
     private roomService: RoomService,
     private notificationService: NotificationService,
-    private musicService: MusicService
+    private musicService: MusicService,
+    private queueService: QueueService
   ) {
   }
 
   ngOnInit() {
-    document.addEventListener('mousemove', this.onMouseMove.bind(this));
-    document.addEventListener('mouseup', this.onMouseUp.bind(this));
+    this.checkScreenSize();
 
-    // Setup room deletion listeners
+    const queueSub = this.queueService.queue$.subscribe(queueData => {
+      this.queueCount = queueData.queue.length;
+      this.queueItems = queueData.queue;
+      this.currentTrackIndex = queueData.currentTrackIndex;
+
+      if (queueData.currentTrackIndex >= 0 && queueData.queue[queueData.currentTrackIndex]) {
+        const currentTrack = queueData.queue[queueData.currentTrackIndex];
+        this.currentlyPlayingId = currentTrack.id;
+      } else {
+        this.currentlyPlayingId = undefined;
+      }
+    });
+    this.subscriptions.push(queueSub);
+
     this.setupRoomDeletionListeners();
 
-    // Setup additional error handling for HTTP requests
     this.setupHttpErrorHandling();
 
     setTimeout(() => {
@@ -72,31 +84,56 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    document.removeEventListener('mousemove', this.onMouseMove);
-    document.removeEventListener('mouseup', this.onMouseUp);
-
     this.subscriptions.forEach(sub => sub.unsubscribe());
-  }
-
-  startResize(event: MouseEvent, resizer: 'left' | 'right') {
-    this.isResizing = true;
-    this.currentResizer = resizer;
-    this.startX = event.clientX;
-    this.startLeftWidth = this.leftWidth;
-    this.startCenterWidth = this.centerWidth;
-    this.startRightWidth = this.rightWidth;
-
-    event.preventDefault();
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  }
-
-  @HostListener('window:resize')
-  onWindowResize() {
   }
 
   returnToLanding() {
     this.router.navigate(['/']);
+  }
+
+  onMobileTabChange(tab: 'search' | 'queue' | 'room') {
+    this.mobileTab = tab;
+  }
+
+  onDesktopTabChange(tab: 'search' | 'queue' | 'room') {
+    if (tab === 'search' || tab === 'room') {
+      this.desktopTab = tab;
+    }
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(event: any) {
+    this.checkScreenSize();
+  }
+
+  onRemoveFromQueue(id: number | string) {
+    const index = this.queueItems.findIndex(item =>
+      String(item.id) === String(id)
+    );
+
+    if (index >= 0 && this.roomCode) {
+      this.queueService.removeFromQueue(this.roomCode, index).subscribe({
+        next: (response) => {
+          console.log('Successfully removed from queue');
+        },
+        error: (error) => {
+          console.error('Error removing from queue:', error);
+        }
+      });
+    }
+  }
+
+  onPlayNext(item: any) {
+    const index = this.queueItems.findIndex(queueItem =>
+      String(queueItem.id) === String(item.id)
+    );
+
+    if (index >= 0 && this.roomCode) {
+      const user = this.roomStateService.getUser();
+      if (user && item.downloadStatus === 'completed') {
+        this.socketService.playTrackAtIndex(this.roomCode, user.id, index);
+      }
+    }
   }
 
   private validateRoomExists(roomCode: string): void {
@@ -208,17 +245,19 @@ export class RoomComponent implements OnInit, OnDestroy {
     }
 
     return null;
-  }  private ensureSocketConnection(): void {
+  }
+
+  private ensureSocketConnection(): void {
     const currentUser = this.roomStateService.getUser();
     if (currentUser && this.roomCode) {
       this.socketService.joinRoom(this.roomCode, currentUser);
       this.socketService.getParticipants(this.roomCode);
-      
-      // Request initial music sync immediately and then again after a delay
-      // This ensures we get sync even if the first request fails or is missed
+
+      this.loadQueue();
+
       console.log('🎵 Requesting immediate music sync after joining room...');
       this.socketService.requestSync(this.roomCode);
-      
+
       setTimeout(() => {
         console.log('🎵 Requesting backup music sync...');
         this.socketService.requestSync(this.roomCode);
@@ -227,35 +266,30 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   private setupRoomDeletionListeners(): void {
-    // Listen for room deletion events
     const roomDeletedSub = this.socketService.onRoomDeleted().subscribe((data) => {
       console.log('🗑️ Room deleted:', data);
       this.handleRoomDeleted(data.message || 'Room has been deleted');
     });
     this.subscriptions.push(roomDeletedSub);
 
-    // Listen for force disconnect events
     const forceDisconnectSub = this.socketService.onForceDisconnect().subscribe((data) => {
       console.log('🚪 Force disconnect:', data);
       this.handleRoomDeleted(data.message || 'You have been disconnected from the room');
     });
-    this.subscriptions.push(forceDisconnectSub);    // Listen for socket errors that might indicate room issues
+    this.subscriptions.push(forceDisconnectSub);
     const errorSub = this.socketService.onError().subscribe((error) => {
       console.log('❌ Socket error:', error);
       if (error.message.includes('Room not found') || error.message.includes('room not found')) {
         this.handleRoomDeleted('Room not found or has been deleted');
       } else if (error.message.includes('User not in room')) {
-        // Redirect to landing page when user is not in room
         this.router.navigate(['/']);
       }
     });
     this.subscriptions.push(errorSub);
 
-    // Also listen for when socket disconnects unexpectedly (room might have been deleted)
     const disconnectSub = this.socketService.onSocketDisconnect().subscribe((reason: string) => {
       console.log('🔌 Socket disconnected:', reason);
       if (this.roomCode && !this.isLoading) {
-        // Small delay to avoid immediate reconnection issues
         setTimeout(() => {
           this.validateRoomStillExists();
         }, 1000);
@@ -265,8 +299,6 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   private setupHttpErrorHandling(): void {
-    // This method can be extended to handle HTTP errors globally
-    // For now, the individual API calls in validateRoomExists already handle 404 errors
     console.log('📡 HTTP error handling setup complete');
   }
 
@@ -290,67 +322,39 @@ export class RoomComponent implements OnInit, OnDestroy {
   private handleRoomDeleted(message: string): void {
     console.log('🏠 Handling room deletion, redirecting to landing page');
 
-    // Stop music playback immediately
     this.musicService.destroy();
 
-    // Clear room state
     this.roomStateService.setRoom(null);
     this.roomStateService.setUser(null);
     this.roomStateService.setInRoom(false);
 
-    // Clear local storage
     try {
       SecureStorageService.clearUserSession();
     } catch (error) {
       console.error('Error clearing user session:', error);
     }
 
-    // Disconnect socket
     this.socketService.disconnect();
-
-    // Show notification and redirect
     this.redirectToLandingWithError(message);
   }
 
-  private onMouseMove(event: MouseEvent) {
-    if (!this.isResizing || !this.currentResizer) return;
-
-    const containerWidth = window.innerWidth;
-    const deltaX = event.clientX - this.startX;
-    const deltaPercent = (deltaX / containerWidth) * 100;
-
-    if (this.currentResizer === 'left') {
-      let newLeftWidth = this.startLeftWidth + deltaPercent;
-      let newCenterWidth = this.startCenterWidth - deltaPercent;
-
-      newLeftWidth = Math.max(15, Math.min(25, newLeftWidth));
-      newCenterWidth = Math.max(30, Math.min(65, newCenterWidth));
-
-      const adjustment = (this.startLeftWidth + this.startCenterWidth) - (newLeftWidth + newCenterWidth);
-      newCenterWidth += adjustment;
-
-      this.leftWidth = newLeftWidth;
-      this.centerWidth = newCenterWidth;
-
-    } else if (this.currentResizer === 'right') {
-      let newCenterWidth = this.startCenterWidth + deltaPercent;
-      let newRightWidth = this.startRightWidth - deltaPercent;
-
-      newCenterWidth = Math.max(30, Math.min(65, newCenterWidth));
-      newRightWidth = Math.max(15, Math.min(25, newRightWidth));
-
-      const adjustment = (this.startCenterWidth + this.startRightWidth) - (newCenterWidth + newRightWidth);
-      newCenterWidth += adjustment;
-
-      this.centerWidth = newCenterWidth;
-      this.rightWidth = newRightWidth;
+  private loadQueue(): void {
+    if (this.roomCode) {
+      this.queueService.getQueue(this.roomCode).subscribe({
+        next: (queueData) => {
+          this.queueService.updateQueue(queueData);
+        },
+        error: (error) => {
+          console.error('Error loading queue:', error);
+        }
+      });
     }
   }
 
-  private onMouseUp() {
-    this.isResizing = false;
-    this.currentResizer = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+  private checkScreenSize() {
+    const width = window.innerWidth;
+    this.isMobile = width < 1024;
+    this.isTablet = width >= 1024 && width < 1280;
+    this.isDesktop = width >= 1280;
   }
 }

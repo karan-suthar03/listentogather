@@ -1,200 +1,123 @@
-<div class="room-details-container-minimal p-3">
-  <div class="room-content">
-    <div class="room-details-section">
-      <div *ngIf="roomCode" class="room-code-card mb-3">
-        <h6 class="room-code-title">Share Room Code</h6>
-        <div class="room-code-display-wrapper">
-          <div class="room-code-text" id="roomCodeMinimalDisplay">{{ roomCode || 'N/A' }}</div>
-          <button (click)="copyRoomCode()" class="btn btn-copy-room-code" title="Copy Room Code">
-            <lucide-icon name="copy" size="18"></lucide-icon>
-            <span>Copy</span>
-          </button>
+<div class="flex flex-col h-full text-gray-300">
+  <div class="flex-1 flex flex-col relative z-10">
+    <div class="flex-shrink-0 p-6 border-b border-white/5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold text-white">
+          Room
+        </h2>
+        <div class="flex items-center gap-1">
+          <div class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+          <span class="text-xs text-green-400">Live</span>
         </div>
-        <input #roomCodeInputForCopy [value]="roomCode" class="visually-hidden" readonly type="text">
       </div>
 
-      <div class="user-list-section mb-3">
-        <h6 class="section-title d-flex align-items-center mb-2">
-          <lucide-icon class="me-2" name="users" size="18"></lucide-icon>
-          Participants ({{ users.length }})
-        </h6>
-        <ul class="list-group list-group-flush user-list-minimal-v2">
-          <li *ngFor="let user of users; trackBy: trackByUserId"
-              class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <span
-                [class.connected]="user.isConnected !== false"
-                [class.disconnected]="user.isConnected === false"
-                [title]="user.isConnected === false ? 'Disconnected (removing soon)' : 'Connected'"
-                class="connection-status me-2">●</span>
-              <span [class.text-muted]="user.isConnected === false" class="user-name">{{ user.name }}</span>
-              <span *ngIf="user.isHost" class="badge bg-primary ms-2">HOST</span>
-              <span *ngIf="user.isConnected === false" class="badge bg-warning ms-2 text-dark">DISCONNECTED</span>
-            </div>
-            <button (click)="kickUser(user.id)" *ngIf="isRoomAdmin && user.id !== currentUserId"
-                    class="btn btn-icon btn-sm btn-ghost-danger" title="Kick {{ user.name }}">
-              <lucide-icon name="user-x" size="16"></lucide-icon>
-            </button>
-          </li>
-          <li *ngIf="users.length === 0" class="list-group-item text-muted text-center">
-            No other participants yet.
-          </li>
-        </ul>
-      </div>
-
-      <div *ngIf="isRoomAdmin" class="room-actions-section mb-3">
-        <button (click)="endRoom()" class="btn btn-sm btn-danger w-100 d-flex align-items-center justify-content-center"
-                type="button">
-          <lucide-icon class="me-2" name="log-out" size="16"></lucide-icon>
-          End Room
+      <div class="space-y-2">
+        <button
+          (click)="copyRoomCode()"
+          [class]="codeCopied ? 'bg-green-500/20 hover:bg-green-500/30 border-green-500/20 shadow-lg shadow-green-500/10' : 'bg-gray-900/50 hover:bg-gray-800/60 hover:border-green-500/20'"
+          class="w-full p-2.5 rounded-lg transition-all duration-150 border border-white/5 transform active:scale-95"
+        >
+          <div class="flex items-center justify-center gap-2 text-xs">
+            <lucide-icon
+              [class]="codeCopied ? 'text-green-400 scale-110' : 'text-gray-400'"
+              [name]="codeCopied ? 'check-circle' : 'copy'"
+              class="transition-all duration-150"
+              size="14">
+            </lucide-icon>
+            <span [class]="codeCopied ? 'text-green-400 font-medium' : 'text-gray-300'"
+                  class="transition-all duration-150">
+              {{ codeCopied ? 'Copied!' : 'Code: ' + (roomCode || 'N/A') }}
+            </span>
+          </div>
+        </button>
+        <button
+          (click)="copyRoomLink()"
+          [class]="linkCopied ? 'bg-green-500/20 hover:bg-green-500/30 border-green-500/20 shadow-lg shadow-green-500/10' : 'bg-gray-900/50 hover:bg-gray-800/60 hover:border-green-500/20'"
+          class="w-full p-2.5 rounded-lg transition-all duration-150 border border-white/5 transform active:scale-95"
+        >
+          <div class="flex items-center justify-center gap-2 text-xs">
+            <lucide-icon
+              [class]="linkCopied ? 'text-green-400 scale-110' : 'text-gray-400'"
+              [name]="linkCopied ? 'check-circle' : 'copy'"
+              class="transition-all duration-150"
+              size="14">
+            </lucide-icon>
+            <span [class]="linkCopied ? 'text-green-400 font-medium' : 'text-gray-300'"
+                  class="transition-all duration-150">
+              {{ linkCopied ? 'Copied!' : 'Copy Link' }}
+            </span>
+          </div>
         </button>
       </div>
     </div>
 
-    <div class="section-divider"></div>
+    <div class="flex-1 overflow-hidden">
+      <div class="p-6 pb-2">
+        <h3 class="text-sm font-medium text-gray-400 mb-3">
+          Members ({{ users.length }})
+        </h3>
+      </div>
 
-    <div class="queue-section">
-      <div class="queue-header mb-3">
-        <h6 class="section-title d-flex align-items-center mb-2">
-          <lucide-icon class="me-2" name="list-music" size="18"></lucide-icon>
-          Queue ({{ queueItems.length }}/10)
-          <span
-            *ngIf="queueItems.length >= 8"
-            [class.queue-full]="queueItems.length >= 10"
-            class="queue-limit-warning ms-2"
-            title="{{ queueItems.length >= 10 ? 'Queue is full!' : 'Queue is almost full' }}">
-            <lucide-icon name="alert-circle" size="14"></lucide-icon>
-          </span>
-        </h6>
-        <div class="add-music-section">
-          <div [class.working-state]="isRoomWorking" class="input-group input-group-sm">
-            <span [class.working]="isRoomWorking" class="input-group-text">
-              <lucide-icon *ngIf="!isRoomWorking" name="music" size="16"></lucide-icon>
-              <div *ngIf="isRoomWorking" class="spinner-border spinner-border-sm" role="status">
-                <span class="visually-hidden">Loading...</span>
+      <div class="flex-1 overflow-y-auto px-6 pb-8">
+        <div class="space-y-2">
+          <div
+            *ngFor="let user of users; trackBy: trackByUserId"
+            class="flex items-center gap-3 p-3 rounded-lg bg-gray-900/40 border border-white/5"
+          >
+            <div
+              [class]="user.isHost ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700/60 text-gray-300'"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
+            >
+              {{ user.name.charAt(0).toUpperCase() }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-100 truncate">
+                  {{ user.name }}
+                </span>
+                <span
+                  *ngIf="user.isHost"
+                  class="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded border border-green-500/30"
+                >
+                  Host
+                </span>
               </div>
-            </span> <input
-            (keyup.enter)="addVideoToQueue()"
-            [(ngModel)]="youtubeUrl"
-            [disabled]="isAddingToQueue || isRoomWorking"
-            [placeholder]="isRoomWorking ? 'Server is busy processing...' : 'Paste YouTube or Spotify URL'"
-            class="form-control form-control-sm"
-            id="youtubeUrlMinimal"
-            type="text">
+              <div class="flex items-center gap-1 mt-0.5">
+                <div
+                  [class]="user.isConnected !== false ? 'bg-green-400 animate-pulse' : 'bg-gray-500'"
+                  class="w-1.5 h-1.5 rounded-full"
+                ></div>
+                <span class="text-xs text-gray-500">
+                  {{ user.isConnected !== false ? 'Online' : 'Offline' }}
+                </span>
+              </div>
+            </div>
             <button
-              (click)="addVideoToQueue()"
-              [disabled]="!youtubeUrl.trim() || isAddingToQueue || isRoomWorking || queueItems.length >= 10"
-              [title]="queueItems.length >= 10 ? 'Queue is full (10 songs maximum)' : (isRoomWorking ? 'Server is busy...' : 'Add to Queue')"
-              class="btn btn-sm btn-outline-secondary btn-add-music"
-              type="button">
-              >
-              <lucide-icon *ngIf="!isAddingToQueue && !isRoomWorking" name="plus-circle" size="16"></lucide-icon>
-              <div *ngIf="isAddingToQueue || isRoomWorking" class="spinner-border spinner-border-sm" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
+              (click)="kickUser(user.id)"
+              *ngIf="isRoomAdmin && user.id !== currentUserId"
+              class="text-red-400 hover:text-red-300 transition-colors"
+              title="Kick {{ user.name }}"
+            >
+              <lucide-icon name="user-x" size="16"></lucide-icon>
             </button>
           </div>
 
-          <div class="status-messages mt-2">
-            <div *ngIf="isRoomWorking" class="room-working-message">
-              <small class="text-warning">
-                <lucide-icon class="me-1" name="clock" size="12"></lucide-icon>
-                {{ roomWorkingMessage }} Please wait...
-              </small>
-            </div>
-
-            <div *ngIf="isAddingToQueue && !isRoomWorking" class="personal-loading-message">
-              <small class="text-info">
-                <lucide-icon class="me-1" name="download" size="12"></lucide-icon>
-                Processing your video... This may take a moment.
-              </small>
-            </div>
-            <div *ngIf="addToQueueSuccess" class="success-message">
-              <small class="text-success">
-                <lucide-icon class="me-1" name="check-circle" size="12"></lucide-icon>
-                Video added to queue! Download in progress...
-              </small>
-            </div>
-            <div *ngIf="queueItems.length >= 10" class="queue-full-warning">
-              <small class="text-warning">
-                <lucide-icon class="me-1" name="alert-circle" size="12"></lucide-icon>
-                Queue is full!
-              </small>
-            </div>
+          <div *ngIf="users.length === 0" class="text-center py-8">
+            <div class="text-gray-500 text-sm">No members found</div>
+            <div class="text-gray-600 text-xs mt-1">Waiting for participants...</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="queue-list">
-        <ul *ngIf="queueItems.length > 0" class="list-group list-group-flush queue-items">
-          <li (click)="playTrack(i)"
-              *ngFor="let item of queueItems; let i = index; trackBy: trackByQueueId"
-              [class.clickable]="item.downloadStatus === 'completed'"
-              [class.currently-playing]="i === currentTrackIndex"
-              class="list-group-item queue-item">
-            <div class="queue-item-content">
-              <div class="queue-item-info">
-                <div class="queue-item-title">{{ item.title || 'Unknown Title' }}</div>
-                <div class="queue-item-artist">{{ item.artist || 'Unknown Artist' }}</div>
-                <div class="queue-item-meta">
-                  <div *ngIf="item.duration" class="queue-item-duration">
-                    {{ formatDuration(item.duration) }}
-                  </div>
-                  <div *ngIf="item.downloadStatus && item.downloadStatus !== 'completed'" class="download-status">
-                    <span [ngSwitch]="item.downloadStatus" class="download-text">
-                      <span *ngSwitchCase="'pending'" class="text-muted">
-                        <lucide-icon class="me-1" name="clock" size="12"></lucide-icon>
-                        Preparing...
-                      </span>
-                      <span *ngSwitchCase="'downloading'" class="text-info">
-                        <lucide-icon class="me-1" name="download" size="12"></lucide-icon>
-                        Downloading {{ item.downloadProgress || 0 }}%
-                      </span>
-                      <span *ngSwitchCase="'error'" class="text-danger">
-                        <lucide-icon class="me-1" name="alert-circle" size="12"></lucide-icon>
-                        Download failed
-                      </span>
-                    </span>
-                    <div *ngIf="item.downloadStatus === 'downloading'" class="progress mt-1" style="height: 3px;">
-                      <div [attr.aria-valuenow]="item.downloadProgress || 0"
-                           [style.width.%]="item.downloadProgress || 0"
-                           aria-valuemax="100"
-                           aria-valuemin="0"
-                           class="progress-bar" role="progressbar">
-                      </div>
-                    </div>
-                  </div>
-                  <div *ngIf="item.downloadStatus === 'completed'" class="download-complete">
-                    <span class="text-success">
-                      <lucide-icon class="me-1" name="check-circle" size="12"></lucide-icon>
-                      Ready to play
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="queue-item-actions">
-                <button (click)="playTrack(i); $event.stopPropagation()"
-                        *ngIf="item.downloadStatus === 'completed' && user"
-                        [title]="i === currentTrackIndex ? 'Currently playing' : 'Play this track'"
-                        class="btn btn-icon btn-sm btn-ghost-primary play-btn">
-                  <lucide-icon [name]="i === currentTrackIndex ? 'volume-2' : 'play'" size="12"></lucide-icon>
-                </button>
-                <button (click)="removeFromQueue(i); $event.stopPropagation()"
-                        *ngIf="isRoomAdmin && i !== currentTrackIndex"
-                        class="btn btn-icon btn-sm btn-ghost-danger"
-                        title="Remove from queue">
-                  <lucide-icon name="x" size="14"></lucide-icon>
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <div *ngIf="queueItems.length === 0" class="empty-queue text-center text-muted py-4">
-          <lucide-icon class="mb-2" name="music" size="32"></lucide-icon>
-          <p class="mb-0">No songs in queue</p>
-          <small>Add a YouTube URL above to get started</small>
-        </div>
-      </div>
+    <div class="flex-shrink-0 p-6 border-t border-white/5">
+      <button
+        (click)="endRoom()"
+        class="w-full py-3 px-4 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/20 text-red-400 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >
+        <lucide-icon name="log-out" size="16"></lucide-icon>
+        Leave Room
+      </button>
     </div>
   </div>
 </div>

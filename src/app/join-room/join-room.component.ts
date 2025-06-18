@@ -69,7 +69,8 @@ export class JoinRoomComponent implements OnInit {
     if (!this.userName.trim() || this.isJoining) return;
 
     this.isJoining = true;
-    const cleanUserName = this.userName.trim();    this.roomService.joinRoom(this.roomCode, cleanUserName).subscribe({
+    const cleanUserName = this.userName.trim();
+    this.roomService.joinRoom(this.roomCode, cleanUserName).subscribe({
       next: (response) => {
         if (response.success && response.data && response.data.room) {
           const userId = response.data.user.id;
@@ -81,7 +82,7 @@ export class JoinRoomComponent implements OnInit {
           SecureStorageService.storeUserSession(userId, this.roomCode);
 
           this.router.navigate(['/room', this.roomCode]);
-          this.isJoining = false; // Ensure it's reset even on successful navigation
+          this.isJoining = false;
         } else {
           this.isJoining = false;
           this.notificationService.show('Failed to join room. Please check the room code and try again.', 'error');
@@ -96,8 +97,10 @@ export class JoinRoomComponent implements OnInit {
         }
       }
     });
-  }  goToLanding() {
-    this.isJoining = false; // Reset the joining state
+  }
+
+  goToLanding() {
+    this.isJoining = false;
     this.router.navigate(['/']);
   }
 

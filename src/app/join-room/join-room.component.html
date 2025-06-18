@@ -1,42 +1,38 @@
 <div class="join-room-container">
   <div class="join-room-content">
-    <!-- Header Section -->
     <div class="header-section">
       <div class="logo-section">
         <lucide-icon [size]="48" class="logo-icon" name="music"></lucide-icon>
         <h1 class="app-title">ListenTogether</h1>
       </div>
       <p class="app-subtitle">Join the music experience</p>
-    </div>    <!-- Join Card -->
+    </div>
     <div class="action-card join-card">
       <div class="card-header">
         <lucide-icon [size]="32" class="card-icon" name="log-in"></lucide-icon>
         <h2 class="card-title">Join Room</h2>
       </div>
 
-      <!-- Loading State -->
       <div *ngIf="loadingRoomDetails" class="loading-state">
         <div class="spinner"></div>
         <p>Loading room details...</p>
       </div>
 
-      <!-- Room Not Found -->
       <div *ngIf="roomNotFound && !loadingRoomDetails" class="error-state">
         <lucide-icon [size]="48" class="error-icon" name="alert-circle"></lucide-icon>
         <h3>Room Not Found</h3>
-        <p>The room code <span class="room-code-display">{{ roomCode }}</span> doesn't exist or has expired.</p>        <button (click)="goToLanding()" class="back-button">
+        <p>The room code <span class="room-code-display">{{ roomCode }}</span> doesn't exist or has expired.</p>
+        <button (click)="goToLanding()" class="back-button">
           <lucide-icon [size]="18" name="chevron-left"></lucide-icon>
           Back to Home
         </button>
       </div>
 
-      <!-- Room Details -->
       <div *ngIf="roomDetails && !loadingRoomDetails && !roomNotFound" class="room-info">
         <p class="card-description">
           You're about to join room <span class="room-code-display">{{ roomCode }}</span>
         </p>
 
-        <!-- Room Stats -->
         <div class="room-stats">
           <div class="stat-item">
             <lucide-icon [size]="20" name="users"></lucide-icon>
@@ -48,7 +44,6 @@
           </div>
         </div>
 
-        <!-- Members List -->
         <div class="members-section">
           <div class="members-header">
             <lucide-icon [size]="18" name="users"></lucide-icon>
@@ -68,7 +63,6 @@
           </div>
         </div>
 
-        <!-- Join Form -->
         <div class="join-form">
           <div class="input-group">
             <input
@@ -98,7 +92,8 @@
                 Joining...
               </span>
             </span>
-          </button>          <button
+          </button>
+          <button
             (click)="goToLanding()"
             class="back-button"
           >

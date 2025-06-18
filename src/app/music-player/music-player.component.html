@@ -1,131 +1,256 @@
-<div *ngIf="isInRoom" class="player-container position-fixed bottom-0 start-0 end-0">
-  <div class="container-fluid">
-    <div class="row align-items-center g-0">
+<div *ngIf="isInRoom" [class.collapsed]="!isExpanded && isMobile"
+     [class.desktop]="!isMobile"
+     [class.expanded]="isExpanded && isMobile"
+     [class.mobile]="isMobile"
+     class="player-container">
+  <audio
+    #audioRef
+    preload="metadata">
+  </audio>
 
-      <!-- Song info section -->
-      <div class="col-lg-3 col-md-4 col-12">
-        <div class="song-info">
-          <div [class.has-cover]="currentTrack && currentTrack.coverUrl"
-               [style.background-image]="(currentTrack && currentTrack.coverUrl) ? 'url(' + currentTrack.coverUrl + ')' : 'none'"
-               class="album-art">
-            <div *ngIf="!currentTrack || !currentTrack.coverUrl" class="album-placeholder">
-              <lucide-icon name="music" size="20"></lucide-icon>
-            </div>
-            <img (error)="onImageError($event)"
-                 *ngIf="currentTrack && currentTrack.coverUrl"
-                 [alt]="currentTrack.title"
-                 [src]="currentTrack.coverUrl"
-                 style="display: none;">
-          </div>
-          <div class="track-info">
-            <div [title]="currentTrack?.title" class="song-title">
-              {{ currentTrack?.title || 'No song selected' }}
-            </div>
-            <div [title]="currentTrack?.artist" class="artist-name">
-              {{ currentTrack?.artist || 'Unknown artist' }}
-            </div>
-          </div>
+  <div *ngIf="isMobile && !isExpanded" class="mobile-collapsed-modern">
+    <div (click)="toggleExpanded()" class="mobile-collapsed-content">
+      <div class="mobile-progress-bottom">
+        <div
+          [class.animate-pulse]="isPlaying"
+          [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
+          class="mobile-progress-fill">
         </div>
       </div>
 
-      <!-- Playback controls section -->
-      <div class="col-lg-6 col-md-4 col-12 order-md-2 order-3">
-        <div class="controls-section">
+      <div class="mobile-collapsed-inner">
+        <div class="mobile-album-icon">
+          <lucide-icon name="music" size="16"></lucide-icon>
+        </div>
 
-          <!-- Sync status indicator - only show when no initial sync received -->
-          <div *ngIf="!isInSync() && isInRoom" class="sync-status alert alert-info text-center py-1 mb-2">
-            <small>
-              <lucide-icon name="loader-2" size="14" class="me-1 spin"></lucide-icon>
-              Loading music state...
-            </small>
-          </div>
+        <div class="mobile-track-info-modern">
+          <div class="mobile-title-modern">{{ currentTrack?.title || 'No song' }}</div>
+          <div class="mobile-artist-modern">{{ currentTrack?.artist || 'Unknown artist' }}</div>
+        </div>
 
-          <!-- Autoplay blocked prompt - only show when autoplay is actually blocked -->
-          <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="autoplay-prompt alert alert-warning text-center py-2 mb-2">
-            <div class="d-flex align-items-center justify-content-center">
-              <lucide-icon name="volume-x" size="16" class="me-2"></lucide-icon>
-              <span class="me-3">Click to resume playback</span>
-              <button (click)="onResumePlayback()" class="btn btn-sm btn-warning">
-                <lucide-icon name="play" size="14" class="me-1"></lucide-icon>
-                Resume
-              </button>
+        <button
+          (click)="togglePlay(); $event.stopPropagation()"
+          [disabled]="!currentUser || !currentTrack || !isTrackReady()"
+          [title]="getPlayButtonTitle()"
+          class="mobile-play-button-modern">
+          <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="16"></lucide-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div *ngIf="isMobile && isExpanded" class="mobile-expanded-modern">
+    <div (click)="closeExpanded()" class="mobile-backdrop"></div>
+    <div class="mobile-expanded-content">
+      <div class="mobile-gradient-overlay"></div>
+
+      <div class="mobile-expanded-inner">
+        <div class="mobile-header-modern">
+          <button (click)="closeExpanded()" class="close-btn-modern">
+            <lucide-icon name="chevron-down" size="20"></lucide-icon>
+          </button>
+          <div class="mobile-header-title-modern">Playing from Search</div>
+          <button class="more-btn-modern">
+            <lucide-icon name="more-horizontal" size="20"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="mobile-album-section">
+          <div class="mobile-album-art-modern">
+            <div class="mobile-album-bg-gradient"></div>
+            <img *ngIf="currentTrack?.coverUrl"
+                 [alt]="currentTrack?.title || 'Album cover'"
+                 [src]="currentTrack?.coverUrl"
+                 class="mobile-album-image-modern">
+            <div *ngIf="!currentTrack?.coverUrl" class="mobile-album-placeholder-modern">
+              <lucide-icon name="music" size="80"></lucide-icon>
             </div>
           </div>
+        </div>
 
-          <!-- Playback buttons -->
-          <div class="playback-controls">
-            <button [disabled]="!currentUser" class="control-btn shuffle-btn" title="Shuffle (Not implemented)">
-              <lucide-icon name="shuffle" size="16"></lucide-icon>
-            </button>
-            <button (click)="previousTrack()"
-                    [disabled]="!currentUser || !hasPreviousTrack()"
-                    class="control-btn"
-                    title="Previous track">
-              <lucide-icon name="skip-back" size="18"></lucide-icon>
-            </button>
-            <button (click)="togglePlay()"
-                    [class.playing]="isPlaying"
-                    [disabled]="!currentUser || !currentTrack || !isTrackReady()"
-                    [title]="getPlayButtonTitle()"
-                    class="play-btn">
-              <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="20"></lucide-icon>
-            </button>
-            <button (click)="nextTrack()"
-                    [disabled]="!currentUser || !hasNextTrack()"
-                    class="control-btn"
-                    title="Next track">
-              <lucide-icon name="skip-forward" size="18"></lucide-icon>
-            </button>
-            <button [disabled]="!currentUser" class="control-btn repeat-btn" title="Repeat (Not implemented)">
-              <lucide-icon name="repeat" size="16"></lucide-icon>
-            </button>
-          </div>
+        <div class="mobile-track-details-modern">
+          <h1 class="mobile-track-title-modern">{{ currentTrack?.title || 'No song selected' }}</h1>
+          <p class="mobile-track-artist-modern">{{ currentTrack?.artist || 'Unknown artist' }}</p>
+        </div>
 
-          <!-- Progress bar -->
-          <div class="progress-section">
-            <span class="time-display">{{ formatTime(currentTime) }}</span>
-            <div class="progress-container">
-              <div (click)="onProgressClick($event)"
-                   (mousedown)="onProgressMouseDown($event)"
-                   [class.interactive]="currentUser"
-                   [class.dragging]="isDraggingProgress"
-                   class="progress-track">
-                <div [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
-                     class="progress-fill"></div>
-                <div [class.visible]="currentUser"
-                     [style.left.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
-                     class="progress-handle"></div>
+        <div class="mobile-progress-section-modern">
+          <div class="mobile-time-labels-modern">
+            <span>{{ formatTime(currentTime) }}</span>
+            <div class="mobile-progress-container-modern">
+              <div
+                (click)="onProgressClick($event); $event.stopPropagation()"
+                (mousedown)="onProgressMouseDown($event)"
+                [class.dragging]="isDraggingProgress"
+                [class.interactive]="currentUser"
+                class="mobile-progress-track-modern">
+                <div
+                  [class.enhanced-gradient]="isDraggingProgress"
+                  [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
+                  class="mobile-progress-fill-modern">
+                  <div
+                    [class.visible]="isDraggingProgress"
+                    [style.transform]="'translateY(-50%) translateX(50%)'"
+                    class="mobile-progress-handle">
+                  </div>
+                </div>
               </div>
             </div>
-            <span class="time-display">{{ formatTime(duration) }}</span>
+            <span>{{ formatTime(duration) }}</span>
+          </div>
+        </div>
+
+        <div class="mobile-controls-modern">
+          <button
+            (click)="previousTrack(); $event.stopPropagation()"
+            [disabled]="!currentUser || !hasPreviousTrack()"
+            class="mobile-control-btn-modern">
+            <lucide-icon name="skip-back" size="24"></lucide-icon>
+          </button>
+
+          <button
+            (click)="togglePlay(); $event.stopPropagation()"
+            [disabled]="!currentUser || !currentTrack || !isTrackReady()"
+            class="mobile-play-btn-modern">
+            <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="28"></lucide-icon>
+          </button>
+
+          <button
+            (click)="nextTrack(); $event.stopPropagation()"
+            [disabled]="!currentUser || !hasNextTrack()"
+            class="mobile-control-btn-modern">
+            <lucide-icon name="skip-forward" size="24"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="mobile-bottom-controls">
+          <button
+            class="mobile-bottom-btn-modern">
+            <lucide-icon name="heart" size="20"></lucide-icon>
+          </button>
+          <button
+            (click)="toggleMute(); $event.stopPropagation()"
+            class="mobile-bottom-btn-modern">
+            <lucide-icon [name]="getVolumeIcon()" size="20"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div *ngIf="!isMobile" class="desktop-player-modern">
+    <div class="desktop-progress-top">
+      <div
+        (click)="onProgressClick($event); $event.stopPropagation()"
+        (mousedown)="onProgressMouseDown($event)"
+        [class.dragging]="isDraggingProgress"
+        [class.interactive]="currentUser"
+        class="desktop-progress-track-top">
+        <div
+          [class.enhanced-gradient]="isDraggingProgress"
+          [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
+          class="desktop-progress-fill-top">
+          <div
+            [class.visible]="isDraggingProgress"
+            [style.transform]="'translateY(-50%) translateX(50%)'"
+            class="desktop-progress-handle">
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Volume and additional controls -->
-      <div class="col-lg-3 col-md-4 col-12 order-md-3 order-2">
-        <div class="volume-section">
-          <button (click)="toggleMute()"
-                  [title]="isMuted ? 'Unmute' : 'Mute'"
-                  class="volume-btn">
-            <lucide-icon [name]="getVolumeIcon()" size="18"></lucide-icon>
-          </button>
-          <div class="volume-control">
-            <div (click)="onVolumeClick($event)"
-                 (mousedown)="onVolumeMouseDown($event)"
-                 [class.dragging]="isDraggingVolume"
-                 class="volume-track">
-              <div [style.width.%]="isMuted ? 0 : volume * 100" class="volume-fill"></div>
-              <div [style.left.%]="isMuted ? 0 : volume * 100"
-                   class="volume-handle"></div>
-            </div>
+    <div class="desktop-player-content">
+      <div class="desktop-left-section">
+        <div class="desktop-album-icon">
+          <lucide-icon name="music" size="24"></lucide-icon>
+        </div>
+
+        <div class="desktop-track-info">
+          <div [title]="currentTrack?.title" class="desktop-song-title">
+            {{ currentTrack?.title || 'No song selected' }}
           </div>
-          <div class="additional-controls">
-            <button class="control-btn fullscreen-btn" disabled title="Now playing view (Coming soon)">
-              <lucide-icon name="maximize" size="16"></lucide-icon>
+          <div [title]="currentTrack?.artist" class="desktop-artist-name">
+            {{ currentTrack?.artist || 'Unknown artist' }}
+          </div>
+        </div>
+
+        <button class="desktop-heart-btn">
+          <lucide-icon name="heart" size="16"></lucide-icon>
+        </button>
+      </div>
+
+      <div class="desktop-center-section">
+        <div *ngIf="!isInSync() && isInRoom" class="sync-status-modern">
+          <lucide-icon class="spin" name="loader" size="14"></lucide-icon>
+          <small>Loading music state...</small>
+        </div>
+
+        <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="autoplay-prompt-modern">
+          <div class="autoplay-content">
+            <lucide-icon name="volume-x" size="16"></lucide-icon>
+            <span>Click to resume playback</span>
+            <button (click)="onResumePlayback()" class="resume-btn">
+              <lucide-icon name="play" size="14"></lucide-icon>
+              Resume
             </button>
           </div>
         </div>
+
+        <div class="desktop-controls">
+          <button
+            (click)="previousTrack(); $event.stopPropagation()"
+            [disabled]="!currentUser || !hasPreviousTrack()"
+            class="desktop-control-btn"
+            title="Previous track">
+            <lucide-icon name="skip-back" size="20"></lucide-icon>
+          </button>
+
+          <button
+            (click)="togglePlay(); $event.stopPropagation()"
+            [class.playing]="isPlaying"
+            [disabled]="!currentUser || !currentTrack || !isTrackReady()"
+            [title]="getPlayButtonTitle()"
+            class="desktop-play-btn">
+            <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="20"></lucide-icon>
+          </button>
+
+          <button
+            (click)="nextTrack(); $event.stopPropagation()"
+            [disabled]="!currentUser || !hasNextTrack()"
+            class="desktop-control-btn"
+            title="Next track">
+            <lucide-icon name="skip-forward" size="20"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="desktop-time-section">
+          <span class="desktop-time">{{ formatTime(currentTime) }}</span>
+          <span class="desktop-time-separator">•</span>
+          <span class="desktop-time">{{ formatTime(duration) }}</span>
+        </div>
+      </div>
+
+      <div class="desktop-right-section">
+        <button
+          (click)="toggleMute(); $event.stopPropagation()"
+          [title]="isMuted ? 'Unmute' : 'Mute'"
+          class="desktop-volume-btn">
+          <lucide-icon [name]="getVolumeIcon()" size="16"></lucide-icon>
+        </button>
+
+        <div class="desktop-volume-container">
+          <div
+            (click)="onVolumeClick($event); $event.stopPropagation()"
+            (mousedown)="onVolumeMouseDown($event)"
+            [class.dragging]="isDraggingVolume"
+            class="desktop-volume-track">
+            <div
+              [style.width.%]="isMuted ? 0 : volume * 100"
+              class="desktop-volume-fill">
+            </div>
+          </div>
+        </div>
+
+        <button class="desktop-more-btn">
+          <lucide-icon name="more-horizontal" size="16"></lucide-icon>
+        </button>
       </div>
     </div>
   </div>

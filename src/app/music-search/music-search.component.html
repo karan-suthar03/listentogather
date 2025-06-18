@@ -1,0 +1,144 @@
+<div class="search-container">
+  <main class="search-main">
+    <h1 [class]="isFocused || query ? 'title-focused' : 'title-large'">
+      ListenTogether
+    </h1>
+
+    <form (ngSubmit)="handleSearch($event)" class="search-form">
+      <div [class]="'search-input-wrapper' + (isFocused ? ' focused' : '')">
+        <div class="search-glow"></div>
+        <input
+          (blur)="onBlur()"
+          (focus)="onFocus()"
+          (input)="onQueryChange($event)"
+          [placeholder]="getPlaceholderText()"
+          [value]="query"
+          autofocus
+          class="search-input"
+          type="text"
+        />
+        <div class="search-icon">
+          <div *ngIf="inputType === 'spotify'" class="spotify-icon">
+            <span>♪</span>
+          </div>
+          <lucide-icon *ngIf="inputType === 'youtube'" class="youtube-icon" name="youtube" size="20"></lucide-icon>
+          <lucide-icon *ngIf="inputType === 'search'" class="default-icon" name="search" size="20"></lucide-icon>
+        </div>
+        <div *ngIf="isSearching" class="loading-spinner">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </form>
+
+    <div *ngIf="!query && !isSearching" class="search-hints">
+      <div class="hint-grid">
+        <div class="hint-item">
+          <div class="hint-icon blue">
+            <lucide-icon name="search" size="16"></lucide-icon>
+          </div>
+          <div class="hint-content">
+            <p class="hint-title">Search & add to queue</p>
+            <p class="hint-subtitle">Type song name, artist, or album</p>
+          </div>
+        </div>
+
+        <div class="hint-item">
+          <div class="hint-icon green">
+            <div class="spotify-icon-small">
+              <span>♪</span>
+            </div>
+          </div>
+          <div class="hint-content">
+            <p class="hint-title">Add from Spotify</p>
+            <p class="hint-subtitle">Paste any spotify.com song or playlist URL</p>
+          </div>
+        </div>
+
+        <div class="hint-item">
+          <div class="hint-icon red">
+            <lucide-icon name="youtube" size="16"></lucide-icon>
+          </div>
+          <div class="hint-content">
+            <p class="hint-title">Add from YouTube</p>
+            <p class="hint-subtitle">Paste any youtube.com or youtu.be URL</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-container">
+      <div class="results-scroll">
+        <div *ngIf="!query && !isSearching" class="no-query-state">
+          <lucide-icon class="large-icon" name="music" size="48"></lucide-icon>
+          <p class="no-query-text">Add songs to the queue</p>
+        </div>
+
+        <div *ngIf="query && results.length === 0 && !isSearching" class="no-results-state">
+          <lucide-icon class="large-icon" name="frown" size="48"></lucide-icon>
+          <p class="no-results-title">No vibes found for "{{ query }}"</p>
+          <p class="no-results-subtitle">Try a different tune.</p>
+        </div>
+
+        <ul *ngIf="results.length > 0" class="results-list">
+          <li
+            (click)="handleSongAdd(result)"
+            *ngFor="let result of results; let i = index"
+            [style.animation-delay]="(i * 80) + 'ms'"
+            class="result-item"
+          >
+            <div class="result-glow"></div>
+            <div [class]="'result-thumbnail ' + inputType">
+              <img
+                (error)="onImageError($event)"
+                *ngIf="result.thumbnail && inputType === 'search'"
+                [alt]="result.title + ' by ' + result.artist"
+                [src]="result.thumbnail"
+                class="thumbnail-img"
+              />
+              <div *ngIf="inputType === 'spotify'" class="spotify-icon">
+                <span>♪</span>
+              </div>
+              <lucide-icon *ngIf="inputType === 'youtube'" class="youtube-icon" name="youtube" size="20"></lucide-icon>
+              <lucide-icon *ngIf="!result.thumbnail && inputType === 'search'" class="music-icon" name="music"
+                           size="20"></lucide-icon>
+            </div>
+
+            <div class="result-info">
+              <h3 class="result-title">{{ result.title }}</h3>
+              <div class="result-details">
+                <span class="result-artist">{{ result.artist }}</span>
+                <span class="result-separator">•</span>
+                <span class="result-album">{{ result.album }}</span>
+                <span *ngIf="inputType !== 'search'" class="result-separator">•</span>
+                <span
+                  *ngIf="inputType !== 'search'"
+                  [class]="'result-source ' + inputType"
+                >
+                  {{ inputType === 'spotify' ? 'Spotify' : 'YouTube' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="result-actions">
+              <span class="result-duration">{{ result.duration }}</span>
+              <button
+                (click)="$event.stopPropagation(); handleSongAdd(result)"
+                [class]="'add-button ' + (addedSongs.has(result.id) ? 'added' : '')"
+                [disabled]="addedSongs.has(result.id) || addingSongs.has(result.id)"
+              >
+                <div *ngIf="addingSongs.has(result.id)" class="button-spinner"></div>
+                <lucide-icon
+                  *ngIf="!addingSongs.has(result.id)"
+                  name="plus"
+                  size="14"
+                ></lucide-icon>
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div *ngIf="results.length > 0" class="results-fade"></div>
+    </div>
+  </main>
+</div>

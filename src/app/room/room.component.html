@@ -1,5 +1,20 @@
+<app-navigation
+  (tabChange)="onMobileTabChange($event)"
+  *ngIf="isMobile"
+  [activeTab]="mobileTab"
+  [isMobile]="true"
+  [queueCount]="queueCount">
+</app-navigation>
+
+<app-navigation
+  (tabChange)="onDesktopTabChange($event)"
+  *ngIf="isTablet"
+  [activeTab]="desktopTab"
+  [isMobile]="false"
+  [queueCount]="queueCount">
+</app-navigation>
+
 <div class="app-container">
-  <!-- Loading Screen -->
   <div *ngIf="isLoading" class="loading-container">
     <div class="loading-content">
       <div class="loading-spinner"></div>
@@ -8,30 +23,82 @@
     </div>
   </div>
 
-  <!-- Main Room Content -->
   <div *ngIf="!isLoading" class="main-content">
-    <div [style.width.%]="leftWidth" class="resizable-panel left-panel">
-      <app-music-details></app-music-details>
+
+    <div *ngIf="isMobile" class="mobile-layout">
+      <div *ngIf="mobileTab === 'search'" class="section-container">
+        <app-music-search></app-music-search>
+      </div>
+      <div *ngIf="mobileTab === 'queue'" class="section-container">
+        <app-queue
+          (playNext)="onPlayNext($event)"
+          (removeFromQueue)="onRemoveFromQueue($event)"
+          [currentlyPlayingId]="currentlyPlayingId"
+          [isMobile]="true"
+          [queue]="queueItems">
+        </app-queue>
+      </div>
+
+      <div *ngIf="mobileTab === 'room'" class="section-container">
+        <div class="participants-section">
+          <app-room-details></app-room-details>
+        </div>
+      </div>
     </div>
-    <div #leftResizer
-         (mousedown)="startResize($event, 'left')"
-         class="resizer"></div>
-    <div [style.width.%]="centerWidth" class="resizable-panel center-panel">
-      <app-main-panel></app-main-panel>
+
+    <div *ngIf="isTablet" class="tablet-layout">
+      <div *ngIf="desktopTab === 'search'" class="dual-section-layout">
+        <div class="section-container search-section">
+          <app-music-search></app-music-search>
+        </div>
+        <div class="section-container queue-section">
+          <app-queue
+            (playNext)="onPlayNext($event)"
+            (removeFromQueue)="onRemoveFromQueue($event)"
+            [currentlyPlayingId]="currentlyPlayingId"
+            [isMobile]="false"
+            [queue]="queueItems">
+          </app-queue>
+        </div>
+      </div>
+      <div *ngIf="desktopTab === 'room'" class="dual-section-layout">
+        <div class="section-container queue-section">
+          <app-queue
+            (playNext)="onPlayNext($event)"
+            (removeFromQueue)="onRemoveFromQueue($event)"
+            [currentlyPlayingId]="currentlyPlayingId"
+            [isMobile]="false"
+            [queue]="queueItems">
+          </app-queue>
+        </div>
+        <div class="section-container participants-section">
+          <app-room-details></app-room-details>
+        </div>
+      </div>
     </div>
-    <div #rightResizer
-         (mousedown)="startResize($event, 'right')"
-         class="resizer"></div>
-    <div [style.width.%]="rightWidth" class="resizable-panel right-panel">
-      <app-room-details></app-room-details>
+    <div *ngIf="isDesktop" class="desktop-layout">
+      <div class="section-container search-section">
+        <app-music-search></app-music-search>
+      </div>
+      <div class="section-container queue-section">
+        <app-queue
+          (playNext)="onPlayNext($event)"
+          (removeFromQueue)="onRemoveFromQueue($event)"
+          [currentlyPlayingId]="currentlyPlayingId"
+          [isMobile]="false"
+          [queue]="queueItems">
+        </app-queue>
+      </div>
+      <div class="section-container participants-section">
+        <app-room-details></app-room-details>
+      </div>
     </div>
+
   </div>
 
-  <!-- Music Player (only show when not loading) -->
   <div *ngIf="!isLoading" class="music-player-footer">
     <app-music-player></app-music-player>
   </div>
 
-  <!-- Notifications -->
   <app-notifications></app-notifications>
 </div>

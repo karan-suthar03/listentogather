@@ -1,0 +1,156 @@
+<div class="queue-container">
+  <!-- Header -->
+  <div class="queue-header">
+    <div class="header-top">
+      <h2 class="queue-title">Queue</h2>
+      <div class="queue-count">
+        <div class="status-dot"></div>
+        <span class="count-text">{{ queue.length }} songs</span>
+      </div>
+    </div>
+    <p class="queue-subtitle">Up next in the session</p>
+  </div>
+
+  <!-- Content -->
+  <div class="queue-content">
+    <!-- Empty State -->
+    <div *ngIf="queue.length === 0" class="empty-state">
+      <div class="empty-icon">
+        <lucide-icon name="music" size="40"></lucide-icon>
+      </div>
+      <h3 class="empty-title">Queue is empty</h3>
+      <p class="empty-description">Add some songs to get the party started!</p>
+      <button
+        (click)="handleAddToQueue()"
+        *ngIf="onAddToQueue"
+        class="add-songs-btn">
+        <lucide-icon name="plus-circle" size="16"></lucide-icon>
+        Add Songs
+      </button>
+    </div>
+
+    <!-- Queue List -->
+    <div *ngIf="queue.length > 0" class="queue-list">
+      <div class="queue-items">
+        <div
+          (click)="playTrack(item)"
+          *ngFor="let item of queue; let index = index; trackBy: trackByQueueId"
+          [class.currently-playing]="isCurrentlyPlaying(item)"
+          class="queue-item">
+
+          <!-- Track Number/Status -->
+          <div class="track-indicator">
+            <div *ngIf="isCurrentlyPlaying(item)" class="playing-indicator">
+              <lucide-icon name="volume-2" size="16"></lucide-icon>
+            </div>
+            <span *ngIf="!isCurrentlyPlaying(item)" class="track-number">{{ index + 1 }}</span>
+          </div>
+
+          <!-- Thumbnail -->
+          <div class="track-thumbnail">
+            <img
+              (error)="onImageError($event)"
+              *ngIf="item.coverUrl"
+              [alt]="item.title + ' by ' + item.artist"
+              [src]="item.coverUrl"
+              class="thumbnail-image">
+            <div
+              *ngIf="!item.coverUrl"
+              class="thumbnail-placeholder">
+              <lucide-icon name="music" size="24"></lucide-icon>
+            </div>
+          </div>
+
+          <!-- Track Info -->
+          <div class="track-info">
+            <h3 [class.playing]="isCurrentlyPlaying(item)" class="track-title">
+              {{ item.title }}
+              <span *ngIf="isCurrentlyPlaying(item)" class="now-playing-label">• Now Playing</span>
+            </h3>
+            <div class="track-meta">
+              <span class="artist">{{ item.artist }}</span>
+              <span class="separator">•</span>
+              <span class="added-by">by {{ item.addedBy }}</span>
+
+              <!-- Download Status -->
+              <ng-container *ngIf="item.downloadStatus && item.downloadStatus !== 'completed'">
+                <span class="separator">•</span>
+                <div [ngSwitch]="item.downloadStatus" class="download-status">
+                  <div *ngSwitchCase="'pending'" class="status-pending">
+                    <lucide-icon name="clock" size="12"></lucide-icon>
+                    <span>Queued</span>
+                  </div>
+                  <div *ngSwitchCase="'downloading'" class="status-downloading">
+                    <lucide-icon name="download" size="12"></lucide-icon>
+                    <span>{{ item.downloadProgress ? getMathRound(item.downloadProgress) + '%' : 'Downloading' }}</span>
+                  </div>
+                  <div *ngSwitchCase="'completed'" class="status-completed">
+                    <lucide-icon name="check-circle" size="12"></lucide-icon>
+                    <span>Ready</span>
+                  </div>
+                  <div *ngSwitchCase="'error'" class="status-error">
+                    <span class="error-icon">✗</span>
+                    <span>Failed</span>
+                  </div>
+                  <div *ngSwitchCase="'failed'" class="status-error">
+                    <span class="error-icon">✗</span>
+                    <span>Failed</span>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+
+            <!-- Download Progress Bar -->
+            <div *ngIf="item.downloadStatus === 'downloading' && item.downloadProgress !== undefined"
+                 class="progress-bar-container">
+              <div class="progress-bar">
+                <div [style.width.%]="item.downloadProgress" class="progress-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="track-actions">
+            <button
+              (click)="playTrack(item, $event)"
+              [class.active]="actionStates[getStringId(item.id)] === 'play'"
+              class="action-btn play-btn">
+              <lucide-icon
+                *ngIf="actionStates[getStringId(item.id)] !== 'play'"
+                name="play"
+                size="14"></lucide-icon>
+              <lucide-icon
+                *ngIf="actionStates[getStringId(item.id)] === 'play'"
+                name="check-circle"
+                size="14"></lucide-icon>
+            </button>
+
+            <button
+              (click)="removeTrack(item.id, $event)"
+              [class.active]="actionStates[getStringId(item.id)] === 'remove'"
+              class="action-btn remove-btn">
+              <lucide-icon
+                *ngIf="actionStates[getStringId(item.id)] !== 'remove'"
+                name="x"
+                size="14"></lucide-icon>
+              <lucide-icon
+                *ngIf="actionStates[getStringId(item.id)] === 'remove'"
+                name="check-circle"
+                size="14"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add More Songs Button (Mobile) -->
+      <div *ngIf="onAddToQueue && isMobile" class="mobile-add-more">
+        <button
+          (click)="handleAddToQueue()"
+          class="add-more-btn">
+          <lucide-icon name="plus-circle" size="16"></lucide-icon>
+          Add More Songs
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

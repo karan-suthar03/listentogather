@@ -9,7 +9,7 @@ import {ConfigService} from './config.service';
 })
 export class SocketService implements OnDestroy {
   private socket: any;
-    // Shared subjects for all socket events
+  // Shared subjects for all socket events
   private roomUpdate$ = new Subject<Room>();
   private userJoined$ = new Subject<{ user: User, room: Room }>();
   private userLeft$ = new Subject<{ user: User, room: Room }>();
@@ -36,86 +36,8 @@ export class SocketService implements OnDestroy {
       reconnection: true,
       timeout: 5000
     });
-    
+
     this.setupSocketListeners();
-  }
-
-  private setupSocketListeners(): void {
-    // Set up all socket listeners ONCE
-    this.socket.on('room-updated', (room: Room) => {
-      this.roomUpdate$.next(room);
-    });
-
-    this.socket.on('user-joined', (data: { user: User, room: Room }) => {
-      this.userJoined$.next(data);
-    });
-
-    this.socket.on('user-left', (data: { user: User, room: Room }) => {
-      this.userLeft$.next(data);
-    });
-
-    this.socket.on('user-disconnected', (data: { userId: string, user: User, room: Room }) => {
-      this.userDisconnected$.next(data);
-    });
-
-    this.socket.on('user-reconnected', (data: { userId: string, user: User, room: Room }) => {
-      this.userReconnected$.next(data);
-    });
-
-    this.socket.on('participant-list', (participants: User[]) => {
-      this.participantList$.next(participants);
-    });
-
-    this.socket.on('music-state', (syncData: MusicSyncData) => {
-      this.musicState$.next(syncData);
-    });
-
-    this.socket.on('error', (error: { message: string }) => {
-      this.error$.next(error);
-    });
-
-    this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
-      this.queueItemProgress$.next(data);
-    });
-
-    this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
-      this.queueItemComplete$.next(data);
-    });
-
-    this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
-      this.queueItemError$.next(data);
-    });
-
-    this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
-      this.queueUpdated$.next(data);
-    });
-
-    this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {
-      this.roomWorkingStateChanged$.next(data);
-    });
-
-    this.socket.on('room-deleted', (data: { roomCode: string, reason: string, message: string }) => {
-      this.roomDeleted$.next(data);
-    });
-
-    this.socket.on('force-disconnect', (data: { reason: string, message: string }) => {
-      this.forceDisconnect$.next(data);
-    });
-
-    // Handle socket connection events for better sync
-    this.socket.on('connect', () => {
-      console.log('🔌 Socket connected');
-      this.socketConnect$.next();
-    });
-
-    this.socket.on('disconnect', (reason: string) => {
-      console.log('🔌 Socket disconnected:', reason);
-      this.socketDisconnect$.next(reason);
-    });
-
-    this.socket.on('host-changed', (data: { newHost: User, previousHost?: User, reason: string, room: Room }) => {
-      this.hostChanged$.next(data);
-    });
   }
 
   joinRoom(roomCode: string, user: User): void {
@@ -125,6 +47,7 @@ export class SocketService implements OnDestroy {
   leaveRoom(roomCode: string): void {
     this.socket.emit('leave-room', {roomCode});
   }
+
   // Observable getters - return shared observables instead of creating new ones
   onRoomUpdate(): Observable<Room> {
     return this.roomUpdate$.asObservable();
@@ -248,6 +171,7 @@ export class SocketService implements OnDestroy {
   isConnected(): boolean {
     return this.socket.connected;
   }
+
   onQueueItemProgress(): Observable<{ queueItemId: string, progress: number, status: string }> {
     return this.queueItemProgress$.asObservable();
   }
@@ -290,7 +214,7 @@ export class SocketService implements OnDestroy {
 
   // Host management methods
   transferHost(roomCode: string, newHostId: string): void {
-    this.socket.emit('transfer-host', { roomCode, newHostId });
+    this.socket.emit('transfer-host', {roomCode, newHostId});
   }
 
   ngOnDestroy(): void {
@@ -306,7 +230,8 @@ export class SocketService implements OnDestroy {
     this.queueItemProgress$.complete();
     this.queueItemComplete$.complete();
     this.queueItemError$.complete();
-    this.queueUpdated$.complete();    this.roomWorkingStateChanged$.complete();
+    this.queueUpdated$.complete();
+    this.roomWorkingStateChanged$.complete();
     this.roomDeleted$.complete();
     this.forceDisconnect$.complete();
     this.socketDisconnect$.complete();
@@ -317,5 +242,83 @@ export class SocketService implements OnDestroy {
     if (this.socket) {
       this.socket.disconnect();
     }
+  }
+
+  private setupSocketListeners(): void {
+    // Set up all socket listeners ONCE
+    this.socket.on('room-updated', (room: Room) => {
+      this.roomUpdate$.next(room);
+    });
+
+    this.socket.on('user-joined', (data: { user: User, room: Room }) => {
+      this.userJoined$.next(data);
+    });
+
+    this.socket.on('user-left', (data: { user: User, room: Room }) => {
+      this.userLeft$.next(data);
+    });
+
+    this.socket.on('user-disconnected', (data: { userId: string, user: User, room: Room }) => {
+      this.userDisconnected$.next(data);
+    });
+
+    this.socket.on('user-reconnected', (data: { userId: string, user: User, room: Room }) => {
+      this.userReconnected$.next(data);
+    });
+
+    this.socket.on('participant-list', (participants: User[]) => {
+      this.participantList$.next(participants);
+    });
+
+    this.socket.on('music-state', (syncData: MusicSyncData) => {
+      this.musicState$.next(syncData);
+    });
+
+    this.socket.on('error', (error: { message: string }) => {
+      this.error$.next(error);
+    });
+
+    this.socket.on('queueItemProgress', (data: { queueItemId: string, progress: number, status: string }) => {
+      this.queueItemProgress$.next(data);
+    });
+
+    this.socket.on('queueItemComplete', (data: { queueItemId: string, mp3Url: string, status: string }) => {
+      this.queueItemComplete$.next(data);
+    });
+
+    this.socket.on('queueItemError', (data: { queueItemId: string, error: string, status: string }) => {
+      this.queueItemError$.next(data);
+    });
+
+    this.socket.on('queueUpdated', (data: { queue: any[], currentTrackIndex: number }) => {
+      this.queueUpdated$.next(data);
+    });
+
+    this.socket.on('roomWorkingStateChanged', (data: { isWorking: boolean, workingMessage: string }) => {
+      this.roomWorkingStateChanged$.next(data);
+    });
+
+    this.socket.on('room-deleted', (data: { roomCode: string, reason: string, message: string }) => {
+      this.roomDeleted$.next(data);
+    });
+
+    this.socket.on('force-disconnect', (data: { reason: string, message: string }) => {
+      this.forceDisconnect$.next(data);
+    });
+
+    // Handle socket connection events for better sync
+    this.socket.on('connect', () => {
+      console.log('🔌 Socket connected');
+      this.socketConnect$.next();
+    });
+
+    this.socket.on('disconnect', (reason: string) => {
+      console.log('🔌 Socket disconnected:', reason);
+      this.socketDisconnect$.next(reason);
+    });
+
+    this.socket.on('host-changed', (data: { newHost: User, previousHost?: User, reason: string, room: Room }) => {
+      this.hostChanged$.next(data);
+    });
   }
 }

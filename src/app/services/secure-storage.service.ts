@@ -1,12 +1,6 @@
-/**
- * Secure localStorage utility that only stores minimal, non-sensitive data
- */
 export class SecureStorageService {
   private static readonly USER_KEY = 'listentogether_session';
 
-  /**
-   * Store only minimal user session data (no sensitive information like isHost)
-   */
   static storeUserSession(userId: string, roomCode: string): void {
     try {
       const sessionData = {
@@ -20,9 +14,6 @@ export class SecureStorageService {
     }
   }
 
-  /**
-   * Get stored user session data
-   */
   static getUserSession(): { userId: string; roomCode: string; timestamp: number } | null {
     try {
       const stored = localStorage.getItem(this.USER_KEY);
@@ -30,13 +21,11 @@ export class SecureStorageService {
 
       const sessionData = JSON.parse(stored);
 
-      // Validate session data structure
       if (!sessionData.userId || !sessionData.roomCode || !sessionData.timestamp) {
         this.clearUserSession();
         return null;
       }
 
-      // Check if session is expired (24 hours)
       const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
       if (Date.now() - sessionData.timestamp > TWENTY_FOUR_HOURS) {
         this.clearUserSession();
@@ -51,9 +40,6 @@ export class SecureStorageService {
     }
   }
 
-  /**
-   * Clear user session data
-   */
   static clearUserSession(): void {
     try {
       localStorage.removeItem(this.USER_KEY);
@@ -62,9 +48,6 @@ export class SecureStorageService {
     }
   }
 
-  /**
-   * Check if user has a valid session for a specific room
-   */
   static hasValidSession(roomCode: string): boolean {
     const session = this.getUserSession();
     return session !== null && session.roomCode === roomCode;
