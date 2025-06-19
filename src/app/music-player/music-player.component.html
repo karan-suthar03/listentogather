@@ -1,282 +1,263 @@
-<div *ngIf="isInRoom" [class.collapsed]="!isExpanded && isMobile"
-     [class.desktop]="!isMobile"
-     [class.expanded]="isExpanded && isMobile"
-     [class.mobile]="isMobile"
-     class="player-container">
-  <audio
-    #audioRef
-    preload="metadata">
-  </audio>
-
-  <div *ngIf="isMobile && !isExpanded" class="mobile-collapsed-modern">
-    <div (click)="toggleExpanded()" class="mobile-collapsed-content">
-      <div class="mobile-progress-bottom">
-        <div
-          [class.animate-pulse]="isPlaying"
-          [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
-          class="mobile-progress-fill">
-        </div>
-      </div>
-
-      <div class="mobile-collapsed-inner">
-        <div class="mobile-album-icon">
-          <lucide-icon name="music" size="16"></lucide-icon>
-        </div>
-
-        <div class="mobile-track-info-modern">
-          <div class="mobile-title-modern">{{ currentTrack?.title || 'No song' }}</div>
-          <div class="mobile-artist-modern">{{ currentTrack?.artist || 'Unknown artist' }}</div>
-        </div>
-
-        <button
-          (click)="togglePlay(); $event.stopPropagation()"
-          [disabled]="!currentUser || !currentTrack || !isTrackReady()"
-          [title]="getPlayButtonTitle()"
-          class="mobile-play-button-modern">
-          <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="16"></lucide-icon>
-        </button>
+<div *ngIf="isInRoom" class="fixed bottom-0 left-0 right-0 z-50 bg-black text-white shadow-2xl">
+  <audio #audioRef preload="metadata"></audio>  <!-- Mobile Collapsed View -->
+  <div *ngIf="isMobile && !isExpanded" 
+       [class]="'fixed bottom-4 left-4 right-4 bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl border border-white/10 floating-backdrop mobile-player-floating ' + (isPlaying ? 'player-glow' : 'floating-shadow')">    <!-- Thin progress bar at the top -->
+    <div class="absolute top-0 left-2 right-2 h-0.5 bg-white/10 rounded-full overflow-hidden">
+      <div 
+        [style.width.%]="duration > 0 ? (currentTime / duration) * 100 : 0"
+        [class]="'h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-100 rounded-full ' + (isPlaying ? 'animate-pulse' : '')">
       </div>
     </div>
-  </div>
-  <div *ngIf="isMobile && isExpanded" class="mobile-expanded-modern">
-    <div (click)="closeExpanded()" class="mobile-backdrop"></div>
-    <div class="mobile-expanded-content">
-      <div class="mobile-gradient-overlay"></div>
-
-      <div class="mobile-expanded-inner">
-        <div class="mobile-header-modern">
-          <button (click)="closeExpanded()" class="close-btn-modern">
-            <lucide-icon name="chevron-down" size="20"></lucide-icon>
-          </button>
-          <div class="mobile-header-title-modern">Playing from Search</div>
-          <button class="more-btn-modern">
-            <lucide-icon name="more-horizontal" size="20"></lucide-icon>
-          </button>
-        </div>
-
-        <div class="mobile-album-section">
-          <div class="mobile-album-art-modern">
-            <div class="mobile-album-bg-gradient"></div>
-            <img *ngIf="currentTrack?.coverUrl"
-                 [alt]="currentTrack?.title || 'Album cover'"
-                 [src]="currentTrack?.coverUrl"
-                 class="mobile-album-image-modern">
-            <div *ngIf="!currentTrack?.coverUrl" class="mobile-album-placeholder-modern">
-              <lucide-icon name="music" size="80"></lucide-icon>
-            </div>
+    
+    <div (click)="toggleExpanded()" class="flex items-center p-3 min-h-16 cursor-pointer active:bg-white/5 hover:bg-white/3 transition-all duration-200 rounded-2xl">
+      <div class="flex items-center flex-1 min-w-0 gap-3">
+        <div class="w-10 h-10 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+          <img *ngIf="currentTrack?.coverUrl" 
+               [src]="currentTrack?.coverUrl" 
+               [alt]="currentTrack?.title"
+               class="w-full h-full object-cover">
+          <div *ngIf="!currentTrack?.coverUrl" class="w-full h-full flex items-center justify-center text-white/50">
+            <lucide-icon name="music" size="20"></lucide-icon>
           </div>
         </div>
-
-        <div class="mobile-track-details-modern">
-          <h1 class="mobile-track-title-modern">{{ currentTrack?.title || 'No song selected' }}</h1>
-          <p class="mobile-track-artist-modern">{{ currentTrack?.artist || 'Unknown artist' }}</p>
-        </div>
-        <div class="progress-section">
-          <div class="progress-container">
-            <span class="time-label">{{ formatTime(isDragging ? seekPreview : currentTime) }}</span>
-            <div
-              (click)="seekTo($event)"
-              (mousedown)="startSeek($event)"
-              (touchstart)="startSeekTouch($event)"
-              [attr.aria-label]="'Seek to position in track'"
-              [attr.aria-valuemax]="duration"
-              [attr.aria-valuemin]="0"
-              [attr.aria-valuenow]="isDragging ? seekPreview : currentTime"
-              [class.dragging]="isDragging"
-              [title]="'Current: ' + formatTime(isDragging ? seekPreview : currentTime) + ' / ' + formatTime(duration)"
-              class="seekbar-container"
-              role="slider"
-              tabindex="0">
-              <div class="seekbar-track">
-                <div [style.width.%]="getProgress()" class="seekbar-fill"></div>
-                <div [class.active]="isDragging" [style.left.%]="getProgress()" class="seekbar-handle"></div>
-              </div>
-            </div>
-            <span class="time-label">{{ formatTime(duration) }}</span>
+        
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-white mb-0.5 truncate">
+            {{ currentTrack?.title || 'No song playing' }}
           </div>
-        </div>
-
-        <div class="mobile-controls-modern">
-          <button
-            (click)="previousTrack(); $event.stopPropagation()"
-            [disabled]="!currentUser || !hasPreviousTrack()"
-            class="mobile-control-btn-modern">
-            <lucide-icon name="skip-back" size="24"></lucide-icon>
-          </button>
-
-          <button
-            (click)="togglePlay(); $event.stopPropagation()"
-            [disabled]="!currentUser || !currentTrack || !isTrackReady()"
-            class="mobile-play-btn-modern">
-            <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="28"></lucide-icon>
-          </button>
-
-          <button
-            (click)="nextTrack(); $event.stopPropagation()"
-            [disabled]="!currentUser || !hasNextTrack()"
-            class="mobile-control-btn-modern">
-            <lucide-icon name="skip-forward" size="24"></lucide-icon>
-          </button>
-        </div>
-        <div class="mobile-bottom-controls">
-          <button
-            class="mobile-bottom-btn-modern">
-            <lucide-icon name="heart" size="20"></lucide-icon>
-          </button>
-          <button
-            (click)="toggleMute(); $event.stopPropagation()"
-            class="mobile-volume-btn-modern">
-            <lucide-icon [name]="getVolumeIcon()" size="18"></lucide-icon>
-          </button>
-          <div class="mobile-volume-container">
-            <div
-              (click)="onVolumeClick($event); $event.stopPropagation()"
-              (mousedown)="startVolumeSeek($event)"
-              (touchstart)="startVolumeTouchSeek($event)"
-              [attr.aria-label]="'Volume control'"
-              [attr.aria-valuemax]="100"
-              [attr.aria-valuemin]="0"
-              [attr.aria-valuenow]="isMuted ? 0 : volume * 100"
-              [class.dragging]="isDraggingVolume"
-              [title]="'Volume: ' + getVolumePercentage() + '%'"
-              class="mobile-volume-seekbar-container"
-              role="slider"
-              tabindex="0">
-              <div class="mobile-volume-seekbar-track">
-                <div [style.width.%]="isMuted ? 0 : volume * 100" class="mobile-volume-seekbar-fill"></div>
-                <div [class.active]="isDraggingVolume"
-                     [style.left.%]="isMuted ? 0 : volume * 100"
-                     class="mobile-volume-seekbar-handle"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div *ngIf="!isMobile" class="desktop-player-modern">
-    <div (click)="seekTo($event)"
-         (mousedown)="startSeek($event)"
-         (touchstart)="startSeekTouch($event)"
-         [attr.aria-label]="'Seek to position in track'"
-         [attr.aria-valuemax]="duration"
-         [attr.aria-valuemin]="0"
-         [attr.aria-valuenow]="isDragging ? seekPreview : currentTime"
-         [class.dragging]="isDragging"
-         [title]="'Current: ' + formatTime(isDragging ? seekPreview : currentTime) + ' / ' + formatTime(duration)"
-         class="desktop-seekbar-container"
-         role="slider"
-         tabindex="0">
-      <div class="desktop-seekbar-track">
-        <div [style.width.%]="getProgress()" class="seekbar-fill"></div>
-        <div [class.active]="isDragging" [style.left.%]="getProgress()" class="seekbar-handle"></div>
-      </div>
-    </div>
-
-    <div class="desktop-player-content">
-      <div class="desktop-left-section">
-        <div class="desktop-album-icon">
-          <lucide-icon name="music" size="24"></lucide-icon>
-        </div>
-
-        <div class="desktop-track-info">
-          <div [title]="currentTrack?.title" class="desktop-song-title">
-            {{ currentTrack?.title || 'No song selected' }}
-          </div>
-          <div [title]="currentTrack?.artist" class="desktop-artist-name">
+          <div class="text-xs text-white/70 truncate">
             {{ currentTrack?.artist || 'Unknown artist' }}
           </div>
         </div>
+      </div>
+        <div class="flex-shrink-0 ml-3">
+        <button
+          (click)="togglePlay(); $event.stopPropagation()"
+          [disabled]="!currentUser || !currentTrack || !isTrackReady()"
+          class="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-green-400 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/25">
+          <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="20"></lucide-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Mobile Expanded View -->
+  <div *ngIf="isMobile && isExpanded" class="fixed inset-0 bg-gradient-to-b from-gray-900 to-black z-50 flex flex-col animate-slide-up">
+    <div class="flex items-center p-4 border-b border-white/10 bg-black/20 backdrop-blur-xl">
+      <button (click)="closeExpanded()" class="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:bg-white/20">
+        <lucide-icon name="chevron-down" size="24"></lucide-icon>
+      </button>
+      <div class="flex-1 text-center text-base font-semibold text-white">Now Playing</div>
+      <div class="w-10"></div>
+    </div>
 
-        <button class="desktop-heart-btn">
-          <lucide-icon name="heart" size="16"></lucide-icon>
+    <div class="flex-1 flex flex-col p-5 overflow-y-auto">
+      <!-- Album Art Section -->
+      <div class="flex-1 flex items-center justify-center py-5 min-h-48">
+        <div class="w-72 h-72 max-w-[70vw] max-h-[70vw] rounded-2xl overflow-hidden shadow-2xl relative">
+          <img *ngIf="currentTrack?.coverUrl"
+               [src]="currentTrack?.coverUrl"
+               [alt]="currentTrack?.title"
+               class="w-full h-full object-cover">
+          <div *ngIf="!currentTrack?.coverUrl" class="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center text-white/50">
+            <lucide-icon name="music" size="100"></lucide-icon>
+          </div>
+        </div>
+      </div>
+
+      <!-- Track Info -->
+      <div class="text-center py-5">
+        <div class="text-2xl font-bold text-white mb-2 leading-tight break-words">
+          {{ currentTrack?.title || 'No song selected' }}
+        </div>
+        <div class="text-lg text-white/70 font-medium break-words">
+          {{ currentTrack?.artist || 'Unknown artist' }}
+        </div>
+      </div>
+
+      <!-- Progress Section with Mobile-Friendly Seek Bar -->
+      <div class="py-5">
+        <div class="py-5 cursor-pointer" 
+             (touchstart)="onSeekTouchStart($event)"
+             (touchmove)="onSeekTouchMove($event)"
+             (touchend)="onSeekTouchEnd($event)"
+             (click)="onSeekClick($event)">
+          <div class="relative h-2 bg-white/20 rounded-full touch-none">
+            <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-100" 
+                 [style.width.%]="getProgress()"></div>
+            <div class="absolute top-1/2 w-5 h-5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg transition-all duration-100"
+                 [style.left.%]="getProgress()"></div>
+          </div>
+        </div>
+        
+        <div class="flex justify-between mt-2 text-sm text-white/70 font-mono font-medium">
+          <span>{{ formatTime(currentTime) }}</span>
+          <span>{{ formatTime(duration) }}</span>
+        </div>
+      </div>
+
+      <!-- Main Controls -->
+      <div class="flex items-center justify-center gap-8 py-5">
+        <button
+          (click)="previousTrack()"
+          [disabled]="!currentUser || !hasPreviousTrack()"
+          class="w-15 h-15 rounded-full bg-white/10 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+          <lucide-icon name="skip-back" size="32"></lucide-icon>
+        </button>
+
+        <button
+          (click)="togglePlay()"
+          [disabled]="!currentUser || !currentTrack || !isTrackReady()"
+          class="w-20 h-20 rounded-full bg-gradient-to-r from-green-500 to-green-400 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30">
+          <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="36"></lucide-icon>
+        </button>
+
+        <button
+          (click)="nextTrack()"
+          [disabled]="!currentUser || !hasNextTrack()"
+          class="w-15 h-15 rounded-full bg-white/10 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+          <lucide-icon name="skip-forward" size="32"></lucide-icon>
         </button>
       </div>
 
-      <div class="desktop-center-section">
-        <div *ngIf="!isInSync() && isInRoom" class="sync-status-modern">
-          <lucide-icon class="spin" name="loader" size="14"></lucide-icon>
-          <small>Loading music state...</small>
-        </div>
-
-        <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="autoplay-prompt-modern">
-          <div class="autoplay-content">
-            <lucide-icon name="volume-x" size="16"></lucide-icon>
-            <span>Click to resume playback</span>
-            <button (click)="onResumePlayback()" class="resume-btn">
-              <lucide-icon name="play" size="14"></lucide-icon>
-              Resume
-            </button>
+      <!-- Volume Section with Mobile-Friendly Volume Bar -->
+      <div class="flex items-center gap-4 py-5">
+        <button (click)="toggleMute()" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:bg-white/20 flex-shrink-0">
+          <lucide-icon [name]="getVolumeIcon()" size="24"></lucide-icon>
+        </button>
+        
+        <div class="flex-1 py-5"
+             (touchstart)="onVolumeTouchStart($event)"
+             (touchmove)="onVolumeTouchMove($event)"
+             (touchend)="onVolumeTouchEnd($event)"
+             (click)="onVolumeClick($event)">
+          <div class="relative h-1.5 bg-white/20 rounded-full cursor-pointer touch-none">
+            <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-100" 
+                 [style.width.%]="isMuted ? 0 : volume * 100"></div>
+            <div class="absolute top-1/2 w-4.5 h-4.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg transition-all duration-100"
+                 [style.left.%]="isMuted ? 0 : volume * 100"></div>
           </div>
         </div>
+        
+        <span class="text-sm text-white/70 font-semibold min-w-10 text-right flex-shrink-0">
+          {{ Math.round(isMuted ? 0 : volume * 100) }}%
+        </span>
+      </div>
 
-        <div class="desktop-controls">
+      <!-- Status Messages -->
+      <div *ngIf="shouldShowLoading()" class="flex items-center justify-center gap-2 p-3 my-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-sm">
+        <lucide-icon class="animate-spin" name="loader" size="16"></lucide-icon>
+        <span>Syncing...</span>
+      </div>
+
+      <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="flex items-center justify-center gap-2 p-3 my-2 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-sm">
+        <lucide-icon name="volume-x" size="16"></lucide-icon>
+        <span>Autoplay blocked - tap to resume</span>
+        <button (click)="onResumePlayback()" class="px-3 py-1.5 rounded-md bg-yellow-400 text-black text-xs font-semibold flex items-center gap-1 transition-all hover:bg-yellow-300">
+          <lucide-icon name="play" size="14"></lucide-icon>
+          Resume
+        </button>
+      </div>
+    </div>
+  </div>  <!-- Desktop Player -->
+  <div *ngIf="!isMobile" class="relative bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl m-5 shadow-2xl">
+    <!-- Desktop Progress Bar at Top -->
+    <div class="mb-4 cursor-pointer py-2"
+         (click)="onSeekClick($event)">
+      <div class="relative h-1 bg-white/20 rounded-full">
+        <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-100" 
+             [style.width.%]="getProgress()"></div>
+        <div class="absolute top-1/2 w-3 h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity shadow-lg"
+             [style.left.%]="getProgress()"></div>
+      </div>
+    </div>
+
+    <!-- Desktop Main Content -->
+    <div class="flex items-center gap-5 p-4">
+      <!-- Left Section - Track Info -->
+      <div class="flex items-center gap-3 flex-1 min-w-0">
+        <div class="w-14 h-14 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+          <img *ngIf="currentTrack?.coverUrl"
+               [src]="currentTrack?.coverUrl"
+               [alt]="currentTrack?.title"
+               class="w-full h-full object-cover">
+          <div *ngIf="!currentTrack?.coverUrl" class="w-full h-full flex items-center justify-center text-white/50">
+            <lucide-icon name="music" size="32"></lucide-icon>
+          </div>
+        </div>
+        
+        <div class="min-w-0">
+          <div class="text-base font-semibold text-white mb-1 truncate">
+            {{ currentTrack?.title || 'No song selected' }}
+          </div>
+          <div class="text-sm text-white/70 truncate">
+            {{ currentTrack?.artist || 'Unknown artist' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Section - Controls -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="flex items-center gap-4">
           <button
-            (click)="previousTrack(); $event.stopPropagation()"
+            (click)="previousTrack()"
             [disabled]="!currentUser || !hasPreviousTrack()"
-            class="desktop-control-btn"
-            title="Previous track">
+            class="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed">
             <lucide-icon name="skip-back" size="20"></lucide-icon>
           </button>
 
           <button
-            (click)="togglePlay(); $event.stopPropagation()"
-            [class.playing]="isPlaying"
+            (click)="togglePlay()"
             [disabled]="!currentUser || !currentTrack || !isTrackReady()"
-            [title]="getPlayButtonTitle()"
-            class="desktop-play-btn">
-            <lucide-icon [name]="isPlaying ? 'pause' : 'play'" [size]="20"></lucide-icon>
+            class="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-green-400 text-white flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            <lucide-icon [name]="isPlaying ? 'pause' : 'play'" size="20"></lucide-icon>
           </button>
 
           <button
-            (click)="nextTrack(); $event.stopPropagation()"
+            (click)="nextTrack()"
             [disabled]="!currentUser || !hasNextTrack()"
-            class="desktop-control-btn"
-            title="Next track">
+            class="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed">
             <lucide-icon name="skip-forward" size="20"></lucide-icon>
           </button>
         </div>
 
-        <div class="desktop-time-section">
-          <span class="desktop-time">{{ formatTime(currentTime) }}</span>
-          <span class="desktop-time-separator">•</span>
-          <span class="desktop-time">{{ formatTime(duration) }}</span>
+        <div class="flex items-center gap-2 text-xs text-white/70 font-mono">
+          <span>{{ formatTime(currentTime) }}</span>
+          <span>•</span>
+          <span>{{ formatTime(duration) }}</span>
         </div>
       </div>
 
-      <div class="desktop-right-section">
-        <button
-          (click)="toggleMute(); $event.stopPropagation()"
-          [title]="isMuted ? 'Unmute' : 'Mute'"
-          class="desktop-volume-btn">
+      <!-- Right Section - Volume -->
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <button (click)="toggleMute()" class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:bg-white/20">
           <lucide-icon [name]="getVolumeIcon()" size="16"></lucide-icon>
         </button>
-        <div class="desktop-volume-container">
-          <div
-            (click)="onVolumeClick($event); $event.stopPropagation()"
-            (mousedown)="startVolumeSeek($event)"
-            [attr.aria-label]="'Volume control'"
-            [attr.aria-valuemax]="100"
-            [attr.aria-valuemin]="0"
-            [attr.aria-valuenow]="isMuted ? 0 : volume * 100"
-            [class.dragging]="isDraggingVolume"
-            [title]="'Volume: ' + getVolumePercentage() + '%'"
-            class="volume-seekbar-container"
-            role="slider"
-            tabindex="0">
-            <div class="volume-seekbar-track">
-              <div [style.width.%]="isMuted ? 0 : volume * 100" class="volume-seekbar-fill"></div>
-              <div [class.active]="isDraggingVolume"
-                   [style.left.%]="isMuted ? 0 : volume * 100"
-                   class="volume-seekbar-handle"></div>
-            </div>
+        
+        <div class="w-25">
+          <div class="relative h-1 bg-white/20 rounded-full cursor-pointer"
+               (click)="onVolumeClick($event)">
+            <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-100" 
+                 [style.width.%]="isMuted ? 0 : volume * 100"></div>
+            <div class="absolute top-1/2 w-3 h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity"
+                 [style.left.%]="isMuted ? 0 : volume * 100"></div>
           </div>
         </div>
-
-        <button class="desktop-more-btn">
-          <lucide-icon name="more-horizontal" size="16"></lucide-icon>
-        </button>
       </div>
+    </div>
+
+    <!-- Status Messages for Desktop -->
+    <div *ngIf="shouldShowLoading()" class="flex items-center justify-center gap-2 p-2 mt-3 rounded-md bg-green-500/10 text-green-400 text-xs">
+      <lucide-icon class="animate-spin" name="loader" size="14"></lucide-icon>
+      <span>Syncing music state...</span>
+    </div>
+
+    <div *ngIf="autoplayBlocked && currentTrack && isInRoom" class="flex items-center justify-center gap-2 p-2 mt-3 rounded-md bg-yellow-500/10 text-yellow-400 text-xs">
+      <lucide-icon name="volume-x" size="16"></lucide-icon>
+      <span>Click to resume playback</span>
+      <button (click)="onResumePlayback()" class="px-2 py-1 rounded bg-yellow-400 text-black text-xs font-semibold flex items-center gap-1">
+        <lucide-icon name="play" size="14"></lucide-icon>
+        Resume
+      </button>
     </div>
   </div>
 </div>

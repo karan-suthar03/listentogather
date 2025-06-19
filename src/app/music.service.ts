@@ -20,7 +20,7 @@ export class MusicService {
   public autoplayBlocked$ = this.autoplayBlockedSubject.asObservable();
 
   private pendingSync: any = null;
-
+  private isMobile: boolean = false;
   constructor(
     private configService: ConfigService,
     private socketService: SocketService,
@@ -28,20 +28,42 @@ export class MusicService {
   ) {
     this.audioPlayer = new Audio();
     this.audioPlayer.volume = 1.0;
+    this.isMobile = this.checkIfMobile();
     this.setupAudioListeners();
   }
 
+  private checkIfMobile(): boolean {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any)['opera'] || '';
+    return window.innerWidth <= 768 || /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  }
   syncWithState(syncData: MusicSyncData): void {
     const {isPlaying, currentTime, metadata, queue, currentTrackIndex, serverTimestamp, lastUpdated} = syncData;
 
     const referenceTime = serverTimestamp || lastUpdated || Date.now();
     const clientTime = Date.now();
-    const networkDelay = clientTime - referenceTime;
-
-    let adjustedCurrentTime = currentTime;
-    if (isPlaying && networkDelay > 0 && networkDelay < 10000) {
-      adjustedCurrentTime = Math.max(0, currentTime + (networkDelay / 1000));
+    const networkDelay = clientTime - referenceTime;    let adjustedCurrentTime = currentTime;
+    // Be more conservative with network delay adjustment on mobile
+    // Only adjust if playing, delay is reasonable, and less than 3 seconds
+    if (isPlaying && networkDelay > 0 && networkDelay < 3000) {
+      const delayAdjustment = networkDelay / 1000;
+      // On mobile, be even more conservative with time adjustments
+      const maxAdjustment = this.isMobile ? 1 : 2;
+      adjustedCurrentTime = Math.max(0, currentTime + Math.min(delayAdjustment, maxAdjustment));
     }
+
+    // On mobile, don't apply network delay adjustment if it would cause significant fast-forward
+    if (this.isMobile && (adjustedCurrentTime - currentTime) > 1) {
+      adjustedCurrentTime = currentTime;
+    }
+
+    console.log('🎵 Sync Debug:', {
+      serverTime: new Date(referenceTime).toLocaleTimeString(),
+      clientTime: new Date(clientTime).toLocaleTimeString(),
+      networkDelay: networkDelay + 'ms',
+      originalTime: currentTime,
+      adjustedTime: adjustedCurrentTime,
+      adjustment: adjustedCurrentTime - currentTime
+    });
 
     let currentTrack: QueueItem | null = null;
     if (queue && currentTrackIndex !== undefined && currentTrackIndex >= 0 && queue.length > currentTrackIndex) {
@@ -66,11 +88,11 @@ export class MusicService {
       this.currentTrack.next(currentTrack);
 
       const fullMp3Url = this.configService.getDownloadUrl(currentTrack.mp3Url);
-      const isNewTrack = this.audioPlayer.src !== fullMp3Url;
-
-      const currentAudioTime = this.audioPlayer.currentTime;
+      const isNewTrack = this.audioPlayer.src !== fullMp3Url;      const currentAudioTime = this.audioPlayer.currentTime;
       const timeDifference = Math.abs(currentAudioTime - adjustedCurrentTime);
-      const needsResync = !isNewTrack && timeDifference > 8 && this.audioPlayer.readyState >= 3;
+      // Use different thresholds for mobile vs desktop
+      const resyncThreshold = this.isMobile ? 2 : 3;
+      const needsResync = !isNewTrack && timeDifference > resyncThreshold && this.audioPlayer.readyState >= 3;
 
       this.pendingSync = {
         isPlaying,
@@ -78,8 +100,7 @@ export class MusicService {
         currentTrack,
         queue,
         currentTrackIndex
-      };
-      if (isNewTrack) {
+      };      if (isNewTrack) {
         this.audioPlayer.src = fullMp3Url;
         this.audioPlayer.load();
 
@@ -100,6 +121,7 @@ export class MusicService {
         };
 
         this.audioPlayer.addEventListener('canplay', handleCanPlay);
+        // Reduce timeout from 500ms to 200ms for faster response
         setTimeout(() => {
           if (this.audioPlayer.readyState < 3) {
             const waitForReady = async () => {
@@ -120,7 +142,7 @@ export class MusicService {
               this.audioPlayer.addEventListener('canplay', waitForReady, {once: true});
             }
           }
-        }, 500);
+        }, 200);
       } else if (needsResync) {
         this.requestSync();
 
@@ -137,10 +159,11 @@ export class MusicService {
             this.audioPlayer.pause();
           }
         } catch (error) {
-        }
-      } else {
+        }      } else {
         try {
-          if (timeDifference > 1) {
+          // More precise sync adjustment - mobile needs tighter sync
+          const syncThreshold = this.isMobile ? 0.3 : 0.5;
+          if (timeDifference > syncThreshold) {
             this.audioPlayer.currentTime = adjustedCurrentTime;
           }
 
@@ -154,6 +177,7 @@ export class MusicService {
             this.audioPlayer.pause();
           }
         } catch (error) {
+          console.warn('🎵 Sync adjustment failed:', error);
         }
       }
     } else {
@@ -198,6 +222,17 @@ export class MusicService {
 
   getVolume(): number {
     return this.audioPlayer.volume;
+  }
+
+  getSyncDebugInfo(): any {
+    return {
+      isMobile: this.isMobile,
+      audioCurrentTime: this.audioPlayer.currentTime,
+      audioPaused: this.audioPlayer.paused,
+      audioReadyState: this.audioPlayer.readyState,
+      audioSrc: this.audioPlayer.src,
+      pendingSync: this.pendingSync
+    };
   }
 
   getDuration(): number {

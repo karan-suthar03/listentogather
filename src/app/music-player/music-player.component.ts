@@ -43,6 +43,12 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   private animationFrameId: number | null = null;
   private subscriptions: Subscription[] = [];
 
+  isLoadingSync: boolean = false;
+  private syncRequestTime: number = 0;
+
+  // Add Math property for template access
+  Math = Math;
+
   constructor(
     private musicService: MusicService,
     private socketService: SocketService,
@@ -83,15 +89,16 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       this.checkIfMobile();
     });
   }
-
   togglePlay(): void {
     if (!this.currentUser || !this.roomCode) {
       return;
     }
 
-    if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 300000) {
+    // Reduce sync threshold to be less aggressive
+    if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 180000) {
       console.log('🎵 User not synced recently, requesting sync before control');
       this.socketService.requestSync(this.roomCode);
+      // Reduce wait time from 500ms to 200ms
       setTimeout(() => {
         if (this.currentUser && this.roomCode) {
           if (this.isPlaying) {
@@ -100,7 +107,7 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
             this.socketService.playMusic(this.roomCode, this.currentUser.id);
           }
         }
-      }, 500);
+      }, 200);
       return;
     }
 
@@ -204,6 +211,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     return this.isInitialSyncReceived;
   }
 
+  shouldShowLoading(): boolean {
+    // Only show loading if we're actually waiting for sync and it's been less than 3 seconds
+    return this.isLoadingSync && (Date.now() - this.syncRequestTime) < 3000;
+  }
+
   checkSyncState(): void {
     console.log('🎵 Sync State Debug:', {
       isInitialSyncReceived: this.isInitialSyncReceived,
@@ -214,7 +226,8 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       currentUser: this.currentUser?.name,
       currentTrack: this.currentTrack?.title,
       isPlaying: this.isPlaying,
-      currentTime: this.currentTime
+      currentTime: this.currentTime,
+      musicServiceDebug: this.musicService.getSyncDebugInfo()
     });
   }
 
@@ -306,11 +319,16 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
     if (!success) {
       console.log('Failed to resume playback after user interaction');
     }
-  }
-
-  toggleExpanded(): void {
+  }  toggleExpanded(): void {
     if (this.isMobile) {
       this.isExpanded = !this.isExpanded;
+      // Don't request sync when expanding - we already have the data
+      // Only sync if we haven't received initial sync or it's very old (>5 minutes)
+      if (!this.isInitialSyncReceived || (Date.now() - this.lastSyncTime) > 300000) {
+        this.isLoadingSync = true;
+        this.syncRequestTime = Date.now();
+        this.socketService.requestSync(this.roomCode);
+      }
     }
   }
 
@@ -392,12 +410,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
       this.currentUser = user;
       this.isHost = user?.isHost || false;
     });
-    this.subscriptions.push(userSub);
-
-    const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
+    this.subscriptions.push(userSub);    const inRoomSub = this.roomStateService.getIsInRoom().subscribe(inRoom => {
       this.isInRoom = inRoom;
 
-      if (inRoom && this.roomCode) {
+      // Only sync when joining room, not on every state change
+      if (inRoom && this.roomCode && !this.isInitialSyncReceived) {
         setTimeout(() => {
           if (this.roomCode) {
             this.socketService.requestSync(this.roomCode);
@@ -434,11 +451,11 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
           this.duration = newDuration;
         }
       })
-    );
-    this.subscriptions.push(
+    );    this.subscriptions.push(
       this.socketService.onMusicState().subscribe(syncData => {
         this.lastSyncTime = Date.now();
         this.isInitialSyncReceived = true;
+        this.isLoadingSync = false; // Stop loading indicator
 
         if (!this.isDragging) {
           this.musicService.syncWithState(syncData);
@@ -475,5 +492,84 @@ export class MusicPlayerComponent implements OnInit, OnDestroy {
   private checkIfMobile(): void {
     const userAgent = navigator.userAgent || navigator.vendor || (window as any)['opera'] || '';
     this.isMobile = window.innerWidth <= 768 || /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  }
+
+  // Mobile-friendly seek methods
+  onSeekClick(event: MouseEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
+
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const seekTime = percentage * this.duration;
+
+    this.currentTime = seekTime;
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, seekTime);
+  }
+
+  onSeekTouchStart(event: TouchEvent): void {
+    if (!this.currentUser || !this.roomCode || this.duration <= 0) return;
+    
+    this.isDragging = true;
+    this.seekPreview = this.currentTime;
+    
+    // Prevent default touch behavior
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onSeekTouchMove(event: TouchEvent): void {
+    if (!this.isDragging || !this.duration) return;
+    
+    const touch = event.touches[0];
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    
+    this.seekPreview = percentage * this.duration;
+    
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onSeekTouchEnd(event: TouchEvent): void {
+    if (!this.isDragging || !this.currentUser || !this.roomCode) return;
+    
+    this.isDragging = false;
+    this.socketService.seekMusic(this.roomCode, this.currentUser.id, this.seekPreview);
+    
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  // Mobile-friendly volume methods
+  onVolumeTouchStart(event: TouchEvent): void {
+    this.isDraggingVolume = true;
+    
+    // Prevent default touch behavior
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onVolumeTouchMove(event: TouchEvent): void {
+    if (!this.isDraggingVolume) return;
+    
+    const touch = event.touches[0];
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    
+    this.volume = percentage;
+    this.isMuted = false;
+    this.musicService.setVolume(percentage);
+    
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onVolumeTouchEnd(event: TouchEvent): void {
+    if (!this.isDraggingVolume) return;
+    
+    this.isDraggingVolume = false;
+    
+    event.preventDefault();
+    event.stopPropagation();
   }
 }
